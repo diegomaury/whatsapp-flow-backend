@@ -1,0 +1,25 @@
+{
+  "name": "whatsapp-flow-backend",
+  "version": "1.1.0",
+  "description": "WhatsApp Cloud API backend — Webhook + Flow Endpoint con hardening completo",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "generate-keys": "node utils/generateKeys.js",
+    "db:migrate": "psql $DATABASE_URL -f src/db/schema.sql"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "ioredis": "^5.4.1",
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
