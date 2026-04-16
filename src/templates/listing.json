@@ -1,0 +1,226 @@
+{
+  "version": "7.3",
+  "data_api_version": "4.0",
+  "routing_model": {
+    "WELCOME": ["SEARCH_LOCATION"],
+    "SEARCH_LOCATION": ["PROPERTY_TYPE"],
+    "PROPERTY_TYPE": ["BUDGET"],
+    "BUDGET": ["SUMMARY_CTA"],
+    "SUMMARY_CTA": ["DONE"]
+  },
+  "screens": [
+    {
+      "id": "WELCOME",
+      "title": "Bienvenida",
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Encuentra tu próxima inversión"
+          },
+          {
+            "type": "TextBody",
+            "text": "Hola ${data.firstname}, queremos asegurarnos de que el asesor que te contacte llegue con opciones que encajen con lo que buscas. Solo tomará 2 minutos."
+          },
+          {
+            "type": "Form",
+            "name": "welcome_form",
+            "children": [
+              {
+                "type": "OptIn",
+                "name": "aviso_privacidad",
+                "label": "He leído y acepto el Aviso de Privacidad de Fliphouse",
+                "required": true
+              },
+              {
+                "type": "EmbeddedLink",
+                "text": "Leer políticas de privacidad aquí",
+                "on-click-action": {
+                  "name": "open_url",
+                  "url": "https://fliphouse.com.mx/politicas-de-privacidad"
+                }
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Comenzar",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "SEARCH_LOCATION"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEARCH_LOCATION",
+      "title": "Ubicación de interés",
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Paso 1 de 3 — ¿Dónde buscas?"
+          },
+          {
+            "type": "TextInput",
+            "label": "Colonia o Zona de interés",
+            "name": "colonia_interes",
+            "required": true,
+            "placeholder": "Ej. Las Trojes, Viñedos..."
+          },
+          {
+            "type": "Footer",
+            "label": "Continuar",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "PROPERTY_TYPE"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "PROPERTY_TYPE",
+      "title": "Tipo de propiedad",
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Paso 2 de 3 — ¿Qué buscas?"
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "label": "Prefiero invertir en:",
+            "name": "tipo_propiedad_buscada",
+            "required": true,
+            "data-source": [
+              { "id": "casa", "title": "Casa" },
+              { "id": "depto", "title": "Departamento" },
+              { "id": "terreno", "title": "Terreno / Local" }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Continuar",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "BUDGET"
+              }
+            }
+          }
+        ]
+      }
+    },
+  {
+      "id": "BUDGET",
+      "title": "Presupuesto",
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Paso 3 de 3 — Tu presupuesto"
+          },
+          {
+            "type": "TextInput",
+            "label": "¿Qué presupuesto tienes en mente?",
+            "name": "presupuesto_ajuste",
+            "required": true,
+            "placeholder": "Ej. dos millones de pesos",
+            "helper-text": "Escríbelo con palabras o números, como prefieras."
+          },
+          {
+            "type": "Footer",
+            "label": "Ver resumen",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "SUMMARY_CTA"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "SUMMARY_CTA",
+      "title": "¿Agendamos?",
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "¡Excelente, ${data.firstname}!"
+          },
+          {
+            "type": "TextBody",
+            "text": "Hemos capturado tus preferencias para la zona de **${form.colonia_interes}**. Buscaremos un(a) **${form.tipo_propiedad_buscada}** que se ajuste a tu presupuesto de **${form.presupuesto_ajuste}**."
+          },
+          {
+            "type": "TextBody",
+            "text": "¿Te parece bien que un asesor te contacte hoy mismo para agendar una cita?"
+          },
+          {
+            "type": "Footer",
+            "label": "Sí, agendar llamada",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "DONE"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "DONE",
+      "title": "¡Listo!",
+      "terminal": true,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "¡Todo listo!"
+          },
+          {
+            "type": "TextBody",
+            "text": "Tus datos han sido enviados. Un asesor de Fliphouse se comunicará contigo a la brevedad para dar el siguiente paso en tu inversión."
+          },
+          {
+            "type": "TextCaption",
+            "text": "¡Que tengas un excelente día!"
+          },
+          {
+            "type": "Footer",
+            "label": "Finalizar",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "colonia": "${form.colonia_interes}",
+                "tipo": "${form.tipo_propiedad_buscada}",
+                "presupuesto": "${form.presupuesto_ajuste}",
+                "timestamp": "${environment.timestamp}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

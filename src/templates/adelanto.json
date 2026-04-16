@@ -1,0 +1,287 @@
+{
+  "version": "7.3",
+  "data_api_version": "4.0",
+  "routing_model": {
+    "WELCOME": ["LOCATION"],
+    "LOCATION": ["PROPERTY", "DONE"],
+    "PROPERTY": ["VALUE"],
+    "VALUE": ["ESTIMATE"],
+    "ESTIMATE": ["AUTH"],
+    "AUTH": ["SUMMARY"],
+    "SUMMARY": ["DONE"]
+  },
+  "screens": [
+    {
+      "id": "WELCOME",
+      "title": "Bienvenida",
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Califica tu propiedad en 2 minutos"
+          },
+          {
+            "type": "TextBody",
+            "text": "Te haremos unas preguntas rápidas y al final verás un estimado personalizado de lo que podrías recibir por tu propiedad."
+          },
+          {
+            "type": "Form",
+            "name": "welcome_form",
+            "children": [
+              {
+                "type": "OptIn",
+                "name": "aviso_privacidad",
+                "label": "He leído y acepto el Aviso de Privacidad",
+                "required": true
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Comenzar calificación",
+            "on-click-action": {
+              "name": "navigate",
+              "next": { "type": "screen", "name": "LOCATION" }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "LOCATION",
+      "title": "Tu Ubicación",
+      "data": {
+        "city_list": {
+          "type": "array",
+          "__example__": [
+            { "id": "torreon", "title": "Torreón" },
+            { "id": "otra", "title": "Otra ciudad" }
+          ]
+        }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          { "type": "TextHeading", "text": "Paso 1 de 6 — Tu ubicación" },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "city",
+            "label": "Ciudad",
+            "required": true,
+            "data-source": "${data.city_list}"
+          },
+          {
+            "type": "TextInput",
+            "name": "colonia",
+            "label": "Colonia (Ej. Centro, Residencial...)",
+            "label-variant": "large",
+            "required": true
+          },
+          {
+            "type": "Footer",
+            "label": "Continuar",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "${form.city == 'otra' ? 'DONE' : 'PROPERTY'}"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "PROPERTY",
+      "title": "Tu Propiedad",
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          { "type": "TextHeading", "text": "Paso 2 de 6 — Tu propiedad" },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "tipo_propiedad",
+            "label": "Tipo de propiedad",
+            "required": true,
+            "data-source": [
+              { "id": "casa", "title": "Casa" },
+              { "id": "depto", "title": "Departamento" },
+              { "id": "otro", "title": "Otro" }
+            ]
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "tiene_escrituras",
+            "label": "¿Tienes escrituras?",
+            "required": true,
+            "data-source": [
+              { "id": "si", "title": "Sí" },
+              { "id": "no", "title": "No" },
+              { "id": "confirmar", "title": "Por confirmar" }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Continuar",
+            "on-click-action": {
+              "name": "navigate",
+              "next": { "type": "screen", "name": "VALUE" }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "VALUE",
+      "title": "Valor de la Propiedad",
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          { "type": "TextHeading", "text": "Paso 3 de 6 — ¿Cuánto vale tu propiedad?" },
+          {
+            "type": "TextInput",
+            "name": "valor_propiedad",
+            "label": "Valor estimado (Ej. 1500000)",
+            "required": true,
+            "input-type": "number",
+            "label-variant": "large"
+          },
+          { "type": "TextCaption", "text": "Un aproximado está bien." },
+          {
+            "type": "Footer",
+            "label": "Ver mi estimado",
+            "on-click-action": {
+              "name": "data_exchange",
+              "payload": { "valor": "${form.valor_propiedad}" }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ESTIMATE",
+      "title": "Tu Adelanto",
+      "data": {
+        "rango_estimado": {
+          "type": "string",
+          "__example__": "Recibirías entre $300,000 y $450,000"
+        }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          { "type": "TextHeading", "text": "Paso 4 de 6 — Tu adelanto estimado" },
+          { "type": "TextBody", "text": "${data.rango_estimado}" },
+          { "type": "TextCaption", "text": "Sujeto a evaluación legal y física." },
+          {
+            "type": "Footer",
+            "label": "Quiero que me contacten",
+            "on-click-action": {
+              "name": "navigate",
+              "next": { "type": "screen", "name": "AUTH" }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "AUTH",
+      "title": "Autorización",
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          { "type": "TextHeading", "text": "Paso 5 de 6 — Autorización" },
+          { "type": "TextBody", "text": "¿Autorizas que un asesor te contacte?" },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "acepto_contacto",
+            "required": true,
+            "data-source": [
+              { "id": "si", "title": "Sí, autorizo" },
+              { "id": "no", "title": "No por ahora" }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Continuar",
+            "on-click-action": {
+              "name": "navigate",
+              "next": { "type": "screen", "name": "SUMMARY" }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "SUMMARY",
+      "title": "Resumen",
+      "data": {
+        "city": { "type": "string", "__example__": "Torreón" },
+        "colonia": { "type": "string", "__example__": "Centro" },
+        "tipo_propiedad": { "type": "string", "__example__": "Casa" },
+        "valor_propiedad": { "type": "number", "__example__": 1500000 },
+        "acepto_contacto": { "type": "string", "__example__": "si" }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          { "type": "TextHeading", "text": "Paso 6 de 6 — Revisa tu información" },
+          { "type": "TextBody", "text": "📍 Ubicación: ${data.city} - ${data.colonia}" },
+          { "type": "TextBody", "text": "🏠 Propiedad: ${data.tipo_propiedad}" },
+          { "type": "TextBody", "text": "💰 Valor: $${data.valor_propiedad}" },
+          {
+            "type": "Footer",
+            "label": "Confirmar y finalizar",
+            "on-click-action": {
+              "name": "navigate",
+              "next": { "type": "screen", "name": "DONE" }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "DONE",
+      "title": "¡Listo!",
+      "terminal": true,
+      "data": {
+        "city": { "type": "string", "__example__": "Torreón" },
+        "colonia": { "type": "string", "__example__": "Centro" },
+        "tipo_propiedad": { "type": "string", "__example__": "Casa" },
+        "valor_propiedad": { "type": "number", "__example__": 1500000 },
+        "acepto_contacto": { "type": "string", "__example__": "si" }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "If",
+            "condition": "acepto_contacto == 'si'",
+            "then": [
+              { "type": "TextHeading", "text": "¡Todo listo!" },
+              { "type": "TextBody", "text": "Tus datos fueron recibidos correctamente." }
+            ],
+            "else": [
+              { "type": "TextHeading", "text": "Entendido" },
+              { "type": "TextBody", "text": "Gracias por tu tiempo. Por ahora operamos solo en La Laguna." }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Cerrar",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "city": "${data.city}",
+                "colonia": "${data.colonia}",
+                "valor": "${data.valor_propiedad}",
+                "auth": "${data.acepto_contacto}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
