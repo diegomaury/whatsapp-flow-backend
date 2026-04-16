@@ -30,6 +30,7 @@
 
 const fs   = require('fs');
 const path = require('path');
+const axios = require('axios'); // Agregado para Make.com webhook
 const { decryptRequest, encryptResponse }  = require('../services/encryption');
 const { processFlowRequest }               = require('../services/stateMachine');
 const { getFlowResponseCache, setFlowResponseCache } = require('../services/idempotency');
@@ -212,7 +213,7 @@ async function handleFlowRequest(req, res) {
  * Si la sesión no existe (primer INIT), la crea.
  */
 async function persistStateTransition(decryptedBody, responseData) {
-  const { action, flow_token, screen, data } = decryptedBody;
+  const { action, flow_token, data } = decryptedBody;
   const nextScreen = responseData?.screen;
 
   if (!flow_token || !nextScreen) return;
@@ -239,8 +240,21 @@ async function persistStateTransition(decryptedBody, responseData) {
   }
 
   if (nextScreen === 'SUCCESS') {
-    // Completar sesión
+    // 1. Completar sesión en tu DB (Postgres/Redis)
     await sessionRepo.complete(flow_token, data || {});
+
+    // 2. DISPARAR MAKE.COM (Asíncrono)
+    // No usamos "await" aquí para no bloquear la respuesta a Meta
+    const makeWebhookUrl = process.env.MAKE_WEBHOOK_URL;
+    if (makeWebhookUrl) {
+      axios.post(makeWebhookUrl, {
+        flow_token,
+        timestamp: new Date().toISOString(),
+        payload: data, // Aquí van los datos del formulario (ej. nombre, email)
+        phone: decryptedBody.phone_number
+      }).catch(err => console.error('[Make Error] No se pudo enviar el webhook:', err.message));
+    }
+
     return;
   }
 
