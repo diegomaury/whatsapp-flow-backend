@@ -1,102 +1,74 @@
 'use strict';
 
 /**
- * stateMachine.js
+ * stateMachine.js — Fliphouse
  *
- * State machine de WhatsApp Flows con validación de inputs por pantalla.
+ * Maneja la lógica de pantallas para dos productos:
  *
- * Flujo:
- *   [INIT] → WELCOME → FORM → CONFIRM → SUCCESS (cierra el flow)
+ *   adelanto → WELCOME → LOCATION → PROPERTY → VALUE ──data_exchange──→ ESTIMATE → AUTH → SUMMARY → DONE
+ *   listing  → WELCOME → SEARCH_LOCATION → PROPERTY_TYPE → BUDGET → SUMMARY_CTA → DONE
  *
- * Input validation:
- *   Cada pantalla define un schema con reglas: tipo, longitud, regex, etc.
- *   Los errores de validación NO lanzan excepción — devuelven la misma pantalla
- *   con un campo error_message que WhatsApp muestra al usuario.
+ * El producto se detecta comparando flow_id contra FLOW_ID_ADELANTO / FLOW_ID_LISTING.
+ * Si no coincide con ninguno, se usa el flujo adelanto por default.
  *
- * Regla operativa Make.com (documentada en código):
- *   - Flow CRÍTICO (ej: confirma una acción de negocio): lógica directa aquí. NUNCA Make.
- *   - Flow NO CRÍTICO (ej: actualizar CRM, notificar Slack): encolar async aquí,
- *     responder pantalla intermedia. El worker notifica al usuario cuando termine.
+ * Única llamada data_exchange real:
+ *   - Producto adelanto, pantalla VALUE: recibe `valor` numérico → calcula min/max → devuelve ESTIMATE.
+ *   - El resto de transiciones son navigate (client-side) y no necesitan respuesta del server.
  */
 
 const FLOW_VERSION = '3.0';
 
-// ─── Schemas de validación ────────────────────────────────────────────────────
+// ─── Ciudades de La Laguna ────────────────────────────────────────────────────
+
+const CITY_LIST = [
+  { id: 'torreon',       title: 'Torreón'       },
+  { id: 'gomez_palacio', title: 'Gómez Palacio'  },
+  { id: 'lerdo',         title: 'Lerdo'          },
+  { id: 'otra',          title: 'Otra ciudad'    },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Valida los datos de un submit de pantalla.
- * Retorna null si todo es válido; string con el primer error encontrado si no.
- *
- * @param {object} data
- * @param {Array<{field, label, required?, maxLength?, minLength?, pattern?, patternMsg?}>} schema
- * @returns {string|null}
+ * Detecta el producto desde el flow_id.
+ * @param {string|undefined} flowId
+ * @returns {'adelanto'|'listing'}
  */
-function validate(data, schema) {
-  for (const rule of schema) {
-    const value = (data?.[rule.field] || '').toString().trim();
-
-    if (rule.required && !value) {
-      return `${rule.label} es requerido.`;
-    }
-
-    if (value && rule.minLength && value.length < rule.minLength) {
-      return `${rule.label} debe tener al menos ${rule.minLength} caracteres.`;
-    }
-
-    if (value && rule.maxLength && value.length > rule.maxLength) {
-      return `${rule.label} no puede superar ${rule.maxLength} caracteres.`;
-    }
-
-    if (value && rule.pattern && !rule.pattern.test(value)) {
-      return rule.patternMsg || `${rule.label} tiene un formato inválido.`;
-    }
-  }
-  return null;
+function detectProduct(flowId) {
+  if (!flowId) return 'adelanto';
+  if (flowId === process.env.FLOW_ID_LISTING) return 'listing';
+  return 'adelanto'; // default (incluye FLOW_ID_ADELANTO)
 }
 
-// Schemas por pantalla
-const SCHEMAS = {
-  FORM: [
-    {
-      field:      'name',
-      label:      'Nombre',
-      required:   true,
-      minLength:  2,
-      maxLength:  80,
-      // Bloquea caracteres de control, zero-width, etc.
-      pattern:    /^[\p{L}\p{M}\s'\-\.]+$/u,
-      patternMsg: 'El nombre solo puede contener letras, espacios y los caracteres \' - .',
-    },
-  ],
-  // Añadir schemas para otras pantallas conforme crezca el flow
-};
+/**
+ * Formatea un número como pesos MXN (sin decimales, con comas).
+ * @param {number} n
+ * @returns {string}  Ejemplo: "$1,500,000"
+ */
+function formatMXN(n) {
+  return '$' + Math.round(n).toLocaleString('es-MX');
+}
 
 // ─── Punto de entrada ─────────────────────────────────────────────────────────
 
-/**
- * Procesa el body desencriptado y retorna la respuesta para Meta.
- * Esta función puede ser async para soportar operaciones asíncronas en el futuro.
- *
- * @param {object} decryptedBody
- * @returns {Promise<object>} - Objeto de respuesta (antes de cifrar)
- */
 async function processFlowRequest(decryptedBody) {
-  const { action, screen, data, flow_token } = decryptedBody;
+  const { action, screen, data, flow_token, flow_id } = decryptedBody;
+  const producto = detectProduct(flow_id);
 
-  console.log(`[StateMachine] action="${action}" screen="${screen || 'N/A'}"`);
+  console.log(`[StateMachine] producto=${producto} action="${action}" screen="${screen || 'N/A'}"`);
 
   switch (action) {
     case 'ping':
       return { version: FLOW_VERSION, data: { status: 'active' } };
 
     case 'INIT':
-      return handleInit(flow_token);
+      return handleInit(decryptedBody, producto);
 
     case 'data_exchange':
-      return handleDataExchange(screen, data, flow_token);
+      return handleDataExchange(screen, data, flow_token, producto, decryptedBody);
 
     case 'BACK':
-      return handleBack(screen, data, flow_token);
+      return handleBack(screen, data, flow_token, producto);
 
     default:
       console.warn(`[StateMachine] Acción desconocida: "${action}"`);
@@ -104,98 +76,103 @@ async function processFlowRequest(decryptedBody) {
   }
 }
 
-// ─── Handlers ─────────────────────────────────────────────────────────────────
+// ─── INIT ─────────────────────────────────────────────────────────────────────
 
-function handleInit(flow_token) {
+function handleInit(decryptedBody, producto) {
+  const initData = decryptedBody.data || {};
+
+  if (producto === 'listing') {
+    // Para listing, WELCOME usa ${data.firstname} inyectado desde Make
+    return {
+      version: FLOW_VERSION,
+      screen:  'WELCOME',
+      data: {
+        firstname: initData.firstname || '',
+      },
+    };
+  }
+
+  // adelanto: WELCOME → LOCATION necesita city_list
   return {
     version: FLOW_VERSION,
     screen:  'WELCOME',
     data: {
-      flow_token,
-      welcome_message: '¡Hola! Completa el siguiente formulario.',
+      city_list: CITY_LIST,
     },
   };
 }
 
-function handleDataExchange(screen, data = {}, flow_token) {
-  switch (screen) {
+// ─── DATA EXCHANGE ────────────────────────────────────────────────────────────
 
-    // WELCOME → FORM
-    case 'WELCOME':
-      return {
-        version: FLOW_VERSION,
-        screen:  'FORM',
-        data:    { flow_token },
-      };
-
-    // FORM → CONFIRM (con validación)
-    case 'FORM': {
-      const error = validate(data, SCHEMAS.FORM);
-      if (error) {
-        return {
-          version: FLOW_VERSION,
-          screen:  'FORM',
-          data: { flow_token, error_message: error },
-        };
-      }
-
-      const name = data.name.trim();
-      return {
-        version: FLOW_VERSION,
-        screen:  'CONFIRM',
-        data: {
-          flow_token,
-          name,
-          summary: `Nombre: ${name}. ¿Confirmas?`,
-        },
-      };
-    }
-
-    // CONFIRM → SUCCESS
-    // REGLA: lógica de negocio crítica va aquí directamente.
-    // Si necesitas llamar a Make u otro servicio externo, encola ASYNC y devuelve
-    // una pantalla "PROCESANDO" en su lugar.
-    case 'CONFIRM': {
-      const { name } = data;
-
-      // ── Aquí iría la lógica de negocio síncrona (máx 7s total) ──────────
-      // Ejemplo: await crearRegistroInterno(flow_token, name);
-      // Si tarda >7s → mover a cola async y devolver pantalla intermedia.
-      // ─────────────────────────────────────────────────────────────────────
-
-      return {
-        version: FLOW_VERSION,
-        screen:  'SUCCESS',
-        data: {
-          extension_message_response: {
-            params: {
-              flow_token,
-              name:         name || '',
-              completed_at: new Date().toISOString(),
-            },
-          },
-        },
-      };
-    }
-
-    default:
-      console.warn(`[StateMachine] data_exchange en pantalla desconocida: "${screen}"`);
-      return {
-        version: FLOW_VERSION,
-        screen:  'WELCOME',
-        data:    { flow_token },
-      };
+function handleDataExchange(screen, data = {}, flow_token, producto, decryptedBody) {
+  // La única pantalla con data_exchange real es VALUE (adelanto)
+  if (producto === 'adelanto' && screen === 'VALUE') {
+    return handleValueExchange(data, decryptedBody);
   }
+
+  // Para cualquier otra pantalla con data_exchange inesperado, devolver error suave
+  console.warn(`[StateMachine] data_exchange inesperado en screen="${screen}" producto="${producto}"`);
+  return buildError(`data_exchange no soportado en pantalla: ${screen}`);
 }
 
-function handleBack(screen, data = {}, flow_token) {
-  const backMap = {
-    FORM:    'WELCOME',
-    CONFIRM: 'FORM',
+/**
+ * Pantalla VALUE del flow adelanto:
+ * Recibe el valor de la propiedad → calcula rango 20-30% → devuelve ESTIMATE.
+ */
+function handleValueExchange(data, decryptedBody) {
+  const rawValor = parseFloat(data?.valor) || 0;
+
+  if (rawValor <= 0) {
+    return {
+      version: FLOW_VERSION,
+      screen:  'VALUE',
+      data: {
+        error_message: 'Por favor ingresa un valor válido mayor a cero.',
+      },
+    };
+  }
+
+  const min = rawValor * 0.20;
+  const max = rawValor * 0.30;
+
+  const rango_estimado =
+    `Con una propiedad de ${formatMXN(rawValor)} podrías recibir entre ${formatMXN(min)} y ${formatMXN(max)}.`;
+
+  console.log(`[StateMachine] Cálculo adelanto: valor=${rawValor} → min=${min} max=${max}`);
+
+  return {
+    version: FLOW_VERSION,
+    screen:  'ESTIMATE',
+    data: {
+      rango_estimado,
+    },
+  };
+}
+
+// ─── BACK ─────────────────────────────────────────────────────────────────────
+
+function handleBack(screen, data = {}, flow_token, producto) {
+  const backMaps = {
+    adelanto: {
+      LOCATION: 'WELCOME',
+      PROPERTY: 'LOCATION',
+      VALUE:    'PROPERTY',
+      ESTIMATE: 'VALUE',
+      AUTH:     'ESTIMATE',
+      SUMMARY:  'AUTH',
+    },
+    listing: {
+      SEARCH_LOCATION: 'WELCOME',
+      PROPERTY_TYPE:   'SEARCH_LOCATION',
+      BUDGET:          'PROPERTY_TYPE',
+      SUMMARY_CTA:     'BUDGET',
+    },
   };
 
-  const prev = backMap[screen] || 'WELCOME';
-  console.log(`[StateMachine] BACK: ${screen} → ${prev}`);
+  const map  = backMaps[producto] || backMaps.adelanto;
+  const prev = map[screen] || 'WELCOME';
+
+  console.log(`[StateMachine] BACK: ${screen} → ${prev} (producto: ${producto})`);
 
   return {
     version: FLOW_VERSION,
@@ -204,8 +181,10 @@ function handleBack(screen, data = {}, flow_token) {
   };
 }
 
+// ─── Error helper ─────────────────────────────────────────────────────────────
+
 function buildError(message) {
   return { version: FLOW_VERSION, data: { error: message } };
 }
 
-module.exports = { processFlowRequest, validate };
+module.exports = { processFlowRequest };

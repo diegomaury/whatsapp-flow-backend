@@ -5,6 +5,10 @@
  *
  * Maneja GET /webhook (verificación) y POST /webhook (mensajes entrantes).
  *
+ * Arquitectura: Make.com es el cerebro. Este controller reenvía todos los
+ * mensajes entrantes a MAKE_WA_INBOUND_URL para que Make decida qué hacer.
+ * Railway solo actúa como middleware entre Meta y Make.
+ *
  * Seguridad aplicada en este controller (el resto en middleware):
  *   - La validación HMAC + anti-replay de message_id ya ocurrió en signatureVerification
  *   - Aquí solo procesamos lógica de negocio
@@ -15,8 +19,32 @@
  *   - Responder 200 OK inmediatamente → procesar async para no bloquear Meta.
  */
 
-const { sendTextMessage, markMessageAsRead, sendFlow } = require('../services/whatsappApi');
+const axios = require('axios');
+const { markMessageAsRead } = require('../services/whatsappApi');
 const { acquireWebhookLock } = require('../services/idempotency');
+
+// ─── Forward a Make ───────────────────────────────────────────────────────────
+
+/**
+ * Reenvía el payload de un mensaje entrante al webhook de Make.
+ * No bloquea — Make procesa la lógica de negocio de forma independiente.
+ *
+ * @param {object} payload - Datos del mensaje normalizado
+ */
+async function forwardToMake(payload) {
+  const makeUrl = process.env.MAKE_WA_INBOUND_URL;
+  if (!makeUrl) {
+    console.warn('[Webhook] MAKE_WA_INBOUND_URL no configurada — mensaje no reenviado');
+    return;
+  }
+
+  try {
+    await axios.post(makeUrl, payload, { timeout: 5000 });
+    console.log(`[Webhook] → Make OK (from: ${payload.from}, type: ${payload.type})`);
+  } catch (err) {
+    console.error('[Webhook] Error forwarding a Make:', err.response?.data || err.message);
+  }
+}
 
 // ─── GET /webhook — verificación ──────────────────────────────────────────────
 
@@ -145,25 +173,14 @@ async function handleTextMessage(from, message) {
   const text = (message.text?.body || '').trim();
   console.log(`[Webhook] Texto de ${from}: "${text.slice(0, 80)}"`);
 
-  const lower = text.toLowerCase();
-
-  if (lower === 'flow' || lower === 'formulario') {
-    // Trigger de Flow: usar texto clave para iniciar
-    const flowId    = process.env.FLOW_ID || 'TU_FLOW_ID_AQUI';
-    const flowToken = `tok_${from}_${Date.now()}`;
-
-    await sendFlow({
-      to:         from,
-      flowId,
-      flowToken,
-      headerText: '¡Bienvenido!',
-      bodyText:   'Completa el siguiente formulario rápido.',
-      ctaText:    'Abrir formulario',
-    });
-  } else {
-    // Echo por defecto
-    await sendTextMessage(from, `Recibido: "${text}"`);
-  }
+  // Reenviar a Make — Make decide la respuesta
+  await forwardToMake({
+    from,
+    type:       'text',
+    message_id: message.id,
+    text,
+    timestamp:  message.timestamp,
+  });
 }
 
 async function handleInteractive(from, message) {
@@ -171,27 +188,42 @@ async function handleInteractive(from, message) {
   console.log(`[Webhook] Interactive de ${from}: ${interactiveType}`);
 
   if (interactiveType === 'nfm_reply') {
-    // Completion callback de un Flow
+    // Completion callback de un WhatsApp Flow — reenviar payload completo a Make
     const rawJson = message.interactive.nfm_reply?.response_json;
-    if (rawJson) {
-      let flowData = {};
-      try { flowData = JSON.parse(rawJson); } catch { /* ignore */ }
+    let flowData  = {};
+    try { flowData = JSON.parse(rawJson || '{}'); } catch { /* ignore */ }
 
-      console.log(`[Webhook] Flow completado por ${from}:`, {
-        flow_token: flowData.flow_token,
-        name:       flowData.name,
-      });
+    console.log(`[Webhook] Flow completado por ${from} — flow_token: ${flowData.flow_token?.slice(-8)}`);
 
-      const name = flowData.name || 'Usuario';
-      await sendTextMessage(
-        from,
-        `¡Gracias, ${name}! Recibimos tu información correctamente. 🎉`
-      );
-    }
+    await forwardToMake({
+      from,
+      type:       'flow_completion',
+      message_id: message.id,
+      flow_data:  flowData,
+      timestamp:  message.timestamp,
+    });
+
   } else if (interactiveType === 'button_reply') {
-    const buttonId = message.interactive.button_reply?.id;
-    console.log(`[Webhook] Button reply de ${from}: ${buttonId}`);
-    await sendTextMessage(from, `Seleccionaste: ${message.interactive.button_reply?.title}`);
+    // Respuesta a botón — reenviar a Make
+    await forwardToMake({
+      from,
+      type:       'button_reply',
+      message_id: message.id,
+      button_id:  message.interactive.button_reply?.id,
+      button_title: message.interactive.button_reply?.title,
+      timestamp:  message.timestamp,
+    });
+
+  } else if (interactiveType === 'list_reply') {
+    // Respuesta a lista — reenviar a Make
+    await forwardToMake({
+      from,
+      type:       'list_reply',
+      message_id: message.id,
+      list_id:    message.interactive.list_reply?.id,
+      list_title: message.interactive.list_reply?.title,
+      timestamp:  message.timestamp,
+    });
   }
 }
 
