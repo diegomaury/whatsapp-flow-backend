@@ -40,6 +40,33 @@ app.get('/health/live', (_req, res) => {
   res.json({ status: 'ok', ts: Date.now() });
 });
 
+/** Debug temporal: verifica si la clave privada carga correctamente. REMOVER después. */
+app.get('/health/key-check', (_req, res) => {
+  const crypto = require('crypto');
+  const fs = require('fs');
+  const path = require('path');
+  try {
+    let key = null;
+    const keyPath = process.env.PRIVATE_KEY_PATH;
+    if (keyPath) {
+      key = fs.readFileSync(path.resolve(keyPath), 'utf-8');
+    } else if (process.env.PRIVATE_KEY) {
+      key = process.env.PRIVATE_KEY.replace(/\\n/g, '\n');
+    }
+    if (!key) return res.json({ ok: false, error: 'PRIVATE_KEY no configurada' });
+    const obj = crypto.createPrivateKey(key);
+    res.json({
+      ok: true,
+      type: obj.asymmetricKeyType,
+      bits: obj.asymmetricKeyDetails?.modulusLength,
+      source: keyPath ? 'PRIVATE_KEY_PATH' : 'PRIVATE_KEY',
+      firstChars: key.substring(0, 40),
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 /** Readiness: Redis y Postgres responden. */
 app.get('/health/ready', async (_req, res, next) => {
   try {
