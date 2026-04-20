@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__claude_ai_Make__organizations_list",
+      "mcp__claude_ai_Make__scenarios_list",
+      "mcp__claude_ai_Make__scenarios_get",
+      "mcp__claude_ai_Make__hooks_get",
+      "mcp__claude_ai_Make__scenarios_create",
+      "mcp__claude_ai_Make__hooks_create",
+      "mcp__claude_ai_Make__scenarios_update",
+      "mcp__claude_ai_Make__users_me",
+      "mcp__claude_ai_Make__app-module_get"
+    ]
+  }
+}
