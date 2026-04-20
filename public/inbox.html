@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WhatsApp Inbox</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #075e54;
+      color: #fff;
+      padding: 14px 20px;
+      font-size: 18px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .shell {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 340px;
+      background: #fff;
+      border-right: 1px solid #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    #sidebar-header {
+      padding: 12px 16px;
+      background: #f6f6f6;
+      border-bottom: 1px solid #e0e0e0;
+      font-size: 13px;
+      color: #555;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #refresh-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      color: #075e54;
+    }
+
+    #conv-list {
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .conv-item {
+      padding: 14px 16px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .conv-item:hover { background: #f5f5f5; }
+    .conv-item.active { background: #e8f5e9; }
+
+    .conv-name {
+      font-weight: 600;
+      font-size: 15px;
+      color: #111;
+    }
+
+    .conv-phone {
+      font-size: 12px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .conv-preview {
+      font-size: 13px;
+      color: #555;
+      margin-top: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .conv-time {
+      font-size: 11px;
+      color: #aaa;
+      text-align: right;
+      margin-top: 2px;
+    }
+
+    /* ── Chat panel ── */
+    #chat-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #e5ddd5;
+    }
+
+    #chat-header {
+      background: #075e54;
+      color: #fff;
+      padding: 14px 20px;
+      font-size: 16px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    #messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .msg-bubble {
+      max-width: 65%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.4;
+      position: relative;
+      word-break: break-word;
+    }
+
+    .msg-bubble.in {
+      background: #fff;
+      align-self: flex-start;
+      border-top-left-radius: 0;
+    }
+
+    .msg-bubble.out {
+      background: #dcf8c6;
+      align-self: flex-end;
+      border-top-right-radius: 0;
+    }
+
+    .msg-time {
+      font-size: 11px;
+      color: #aaa;
+      text-align: right;
+      margin-top: 4px;
+    }
+
+    #empty-state {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #888;
+      font-size: 16px;
+    }
+
+    /* ── Send bar ── */
+    #send-bar {
+      gap: 8px;
+      padding: 10px 16px;
+      background: #f0f0f0;
+      border-top: 1px solid #ddd;
+      flex-shrink: 0;
+    }
+
+    #msg-input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 24px;
+      font-size: 14px;
+      outline: none;
+      resize: none;
+    }
+
+    #send-btn {
+      padding: 10px 20px;
+      background: #075e54;
+      color: #fff;
+      border: none;
+      border-radius: 24px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    #send-btn:disabled { background: #aaa; cursor: not-allowed; }
+
+    .spinner { text-align: center; padding: 20px; color: #888; }
+  </style>
+</head>
+<body>
+  <header>📱 WhatsApp Inbox</header>
+
+  <div class="shell">
+    <div id="sidebar">
+      <div id="sidebar-header">
+        <span>Conversaciones</span>
+        <button id="refresh-btn" title="Actualizar">↻</button>
+      </div>
+      <div id="conv-list"><div class="spinner">Cargando...</div></div>
+    </div>
+
+    <div id="chat-panel">
+      <div id="chat-header">Selecciona una conversación</div>
+      <div id="messages-container">
+        <div id="empty-state">← Elige una conversación</div>
+      </div>
+      <div id="send-bar" class="send-bar-hidden">
+        <textarea id="msg-input" rows="1" placeholder="Escribe un mensaje..."></textarea>
+        <button id="send-btn">Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BASE = '';
+    let activeConvId = null;
+    let activeName   = '';
+    let activePhone  = '';
+    let pollTimer    = null;
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+    function fmtTime(ts) {
+      const d = new Date(ts);
+      return d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    }
+    function fmtDate(ts) {
+      const d = new Date(ts);
+      const today = new Date();
+      if (d.toDateString() === today.toDateString()) return fmtTime(ts);
+      return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+    }
+
+    // ── conversations ─────────────────────────────────────────────────────────
+    async function loadConversations() {
+      try {
+        const r = await fetch(`${BASE}/api/conversations`);
+        const { data } = await r.json();
+        renderConvList(data || []);
+      } catch (e) {
+        document.getElementById('conv-list').innerHTML = '<div class="spinner">Error cargando conversaciones</div>';
+      }
+    }
+
+    function renderConvList(convs) {
+      const el = document.getElementById('conv-list');
+      if (!convs.length) {
+        el.innerHTML = '<div class="spinner">Sin conversaciones aún</div>';
+        return;
+      }
+      // Sort by latest first
+      convs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      el.innerHTML = convs.map(c => `
+        <div class="conv-item${c.conversation_id === activeConvId ? ' active' : ''}"
+             data-id="${c.conversation_id}"
+             data-name="${escHtml(c.lead_name)}"
+             data-phone="${escHtml(c.phone)}">
+          <div class="conv-name">${escHtml(c.lead_name)}</div>
+          <div class="conv-phone">${escHtml(c.phone)}</div>
+          <div class="conv-preview">${c.last_direction === 'out' ? '✓ ' : ''}${escHtml(c.last_message)}</div>
+          <div class="conv-time">${fmtDate(c.created_at)}</div>
+        </div>
+      `).join('');
+
+      el.querySelectorAll('.conv-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const { id, name, phone } = item.dataset;
+          openConversation(id, name, phone);
+        });
+      });
+    }
+
+    // ── messages ──────────────────────────────────────────────────────────────
+    async function openConversation(id, name, phone) {
+      activeConvId = id;
+      activeName   = name;
+      activePhone  = phone;
+
+      document.getElementById('chat-header').textContent = `${name}  ·  ${phone}`;
+      document.getElementById('send-bar').classList.remove('send-bar-hidden');
+      document.getElementById('empty-state')?.remove();
+
+      // highlight active
+      document.querySelectorAll('.conv-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.id === id);
+      });
+
+      await loadMessages();
+      clearInterval(pollTimer);
+      pollTimer = setInterval(loadMessages, 5000);
+    }
+
+    async function loadMessages() {
+      if (!activeConvId) return;
+      try {
+        const r = await fetch(`${BASE}/api/conversations/${activeConvId}/messages`);
+        const { data } = await r.json();
+        renderMessages(data || []);
+      } catch (e) { /* silent on poll */ }
+    }
+
+    function renderMessages(msgs) {
+      const container = document.getElementById('messages-container');
+      const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 40;
+
+      container.innerHTML = msgs.map(m => `
+        <div class="msg-bubble ${m.direction}">
+          ${escHtml(m.content)}
+          <div class="msg-time">${fmtTime(m.created_at)}</div>
+        </div>
+      `).join('');
+
+      if (wasAtBottom || msgs.length < 3) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+
+    // ── send ──────────────────────────────────────────────────────────────────
+    async function sendMessage() {
+      const input = document.getElementById('msg-input');
+      const text  = input.value.trim();
+      if (!text || !activePhone) return;
+
+      const btn = document.getElementById('send-btn');
+      btn.disabled = true;
+      input.value  = '';
+
+      try {
+        // Log outgoing message to DB
+        await fetch(`${BASE}/api/log-message`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone:     activePhone,
+            lead_name: activeName,
+            direction: 'out',
+            content:   text,
+          }),
+        });
+
+        // Send via WhatsApp API route (if available)
+        try {
+          await fetch(`${BASE}/send-message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: activePhone, message: text }),
+          });
+        } catch (_) { /* endpoint may not be wired for text yet */ }
+
+        await loadMessages();
+      } finally {
+        btn.disabled = false;
+        input.focus();
+      }
+    }
+
+    function escHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ── event wiring ──────────────────────────────────────────────────────────
+    document.getElementById('refresh-btn').addEventListener('click', loadConversations);
+    document.getElementById('send-btn').addEventListener('click', sendMessage);
+    document.getElementById('msg-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+
+    // initial load
+    loadConversations();
+  </script>
+</body>
+</html>

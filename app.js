@@ -5,6 +5,7 @@
  * Separado de server.js para facilitar testing.
  */
 
+const path    = require('path');
 const express = require('express');
 const app = express();
 
@@ -22,7 +23,11 @@ app.use(
   })
 );
 
+// ─── Archivos estáticos (inbox UI) ───────────────────────────────────────────
+app.use(express.static(path.join(__dirname, 'public')));
+
 // ─── Rutas ────────────────────────────────────────────────────────────────────
+app.use('/api',          require('./src/routes/conversations'));
 app.use('/webhook',      require('./src/routes/webhook'));
 app.use('/flow',         require('./src/routes/flow'));
 app.use('/send-message', require('./src/routes/sendMessage'));

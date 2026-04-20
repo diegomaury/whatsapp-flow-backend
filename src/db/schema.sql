@@ -68,3 +68,21 @@ COMMENT ON COLUMN flow_completions.flow_token   IS 'Token único de sesión envi
 COMMENT ON COLUMN flow_completions.phone_number IS 'Número en formato E.164 sin el símbolo +.';
 COMMENT ON COLUMN flow_completions.captured_data IS 'JSON con todos los datos capturados durante el flow (nombre, etc.).';
 COMMENT ON COLUMN flow_completions.duration_ms  IS 'Milisegundos entre creación de sesión y completion.';
+
+-- ──────────────────────────────────────────────────────────────────────────────
+-- messages
+-- Inbox de conversaciones WhatsApp (mensajes entrantes y salientes).
+-- ──────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS messages (
+  id              SERIAL PRIMARY KEY,
+  conversation_id VARCHAR(50)  NOT NULL,
+  phone           VARCHAR(20)  NOT NULL,
+  lead_name       VARCHAR(100) DEFAULT 'Sin nombre',
+  direction       VARCHAR(3)   NOT NULL CHECK (direction IN ('in', 'out')),
+  content         TEXT         NOT NULL,
+  message_type    VARCHAR(20)  DEFAULT 'text',
+  created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages (conversation_id, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_messages_latest          ON messages (created_at DESC);
