@@ -31,6 +31,7 @@ app.use('/api',          require('./src/routes/conversations'));
 app.use('/webhook',      require('./src/routes/webhook'));
 app.use('/flow',         require('./src/routes/flow'));
 app.use('/send-message', require('./src/routes/sendMessage'));
+app.use('/send-flow',    require('./src/middleware/internalAuth'), require('./src/routes/sendFlow'));
 
 // ─── Health checks ────────────────────────────────────────────────────────────
 

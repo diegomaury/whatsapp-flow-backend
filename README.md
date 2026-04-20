@@ -290,6 +290,64 @@ curl -X POST http://localhost:3000/flow \
 
 ---
 
+## Endpoint interno: POST /send-flow
+
+**Propósito:** Enviar un WhatsApp Flow a un número destino desde Make.com. Protegido por token interno — no exponer públicamente.
+
+**Header requerido:**
+
+```
+X-Internal-Token: <valor de INTERNAL_API_TOKEN>
+```
+
+**Campos del body (JSON):**
+
+| Campo        | Tipo   | Requerido | Descripción |
+|--------------|--------|-----------|-------------|
+| `to`         | string | Sí        | Número destino con código de país (ej: `521234567890`) |
+| `flowId`     | string | Sí        | ID del Flow publicado en Meta |
+| `flowToken`  | string | Sí        | Token único de sesión |
+| `headerText` | string | Sí        | Texto del header del mensaje CTA |
+| `bodyText`   | string | Sí        | Texto del cuerpo del mensaje CTA |
+| `ctaText`    | string | Sí        | Texto del botón CTA (máx 20 caracteres) |
+| `screenData` | object | No        | Datos iniciales para la primera pantalla (default `{}`) |
+
+**Respuesta exitosa (200):**
+
+```json
+{ "ok": true, "whatsapp_response": { ... } }
+```
+
+**Respuesta de error:**
+
+```json
+{ "ok": false, "error": "mensaje de error" }
+```
+
+- `401` — token ausente o incorrecto
+- `502` — error al llamar a WhatsApp API
+
+**Ejemplo de curl:**
+
+```bash
+curl -X POST https://tu-backend.railway.app/send-flow \
+  -H "Content-Type: application/json" \
+  -H "X-Internal-Token: tu_token_secreto" \
+  -d '{
+    "to": "521234567890",
+    "flowId": "1234567890",
+    "flowToken": "token-unico-sesion",
+    "headerText": "Bienvenido",
+    "bodyText": "Completa tu solicitud.",
+    "ctaText": "Comenzar",
+    "screenData": { "nombre": "Diego" }
+  }'
+```
+
+> Este endpoint es exclusivo para Make.com. Configura `INTERNAL_API_TOKEN` en Railway y el mismo valor en el header del módulo HTTP de Make.
+
+---
+
 ## Disparar un flow desde WhatsApp
 
 Envía el texto `flow` (o `formulario`) al número configurado. El backend detecta el keyword y llama a `sendFlow()` automáticamente.
