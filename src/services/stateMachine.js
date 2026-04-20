@@ -104,51 +104,109 @@ function handleInit(decryptedBody, producto) {
 
 // ─── DATA EXCHANGE ────────────────────────────────────────────────────────────
 
-function handleDataExchange(screen, data = {}, flow_token, producto, decryptedBody) {
-  // La única pantalla con data_exchange real es VALUE (adelanto)
-  // Acepta screen='VALUE' explícito O detección por contenido del data
-  const hasValor = data?.valor_aproximado_de_tu_propiedad !== undefined || data?.valor !== undefined;
+// Mapas para convertir IDs a textos de display
+const TIPO_MAP       = { casa: 'Casa', departamento: 'Departamento', otro: 'Otro' };
+const ESCRITURAS_MAP = { si: 'Sí', no: 'No', no_se: 'No lo sé aún' };
 
-  if (producto === 'adelanto' && (screen === 'VALUE' || (!screen && hasValor))) {
-    return handleValueExchange(data, decryptedBody);
+// Imagen placeholder (1×1 px transparente) para campos de imagen requeridos
+const IMG_PLACEHOLDER = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+function handleDataExchange(screen, data = {}, flow_token, producto, decryptedBody) {
+  if (producto === 'adelanto') {
+    // Detectar qué data_exchange es por contenido cuando falta `screen`
+    const hasValor   = data?.valor_aproximado !== undefined ||
+                       data?.valor_aproximado_de_tu_propiedad !== undefined ||
+                       data?.valor !== undefined;
+    const hasResumen = data?.acepto_continuar !== undefined;
+
+    if (screen === 'VALOR' || (!screen && hasValor && !hasResumen)) {
+      return handleValueExchange(data, decryptedBody);
+    }
+    if (screen === 'RESUMEN' || (!screen && hasResumen)) {
+      return handleResumenExchange(data, decryptedBody);
+    }
   }
 
-  // Para cualquier otra pantalla con data_exchange inesperado, devolver error suave
   console.warn(`[StateMachine] data_exchange inesperado en screen="${screen}" producto="${producto}"`);
   return buildError(`data_exchange no soportado en pantalla: ${screen}`);
 }
 
 /**
- * Pantalla VALUE del flow adelanto:
- * Recibe el valor de la propiedad → calcula rango 20-30% → devuelve ESTIMATE.
+ * Pantalla VALOR → responde con ESTIMADO y todos sus campos requeridos.
  */
 function handleValueExchange(data, decryptedBody) {
-  // Acepta ambos nombres de campo: 'valor' o 'valor_aproximado_de_tu_propiedad'
-  const rawValor = parseFloat(data?.valor_aproximado_de_tu_propiedad || data?.valor) || 0;
+  const rawValor = parseFloat(
+    data?.valor_aproximado ||
+    data?.valor_aproximado_de_tu_propiedad ||
+    data?.valor
+  ) || 0;
 
   if (rawValor <= 0) {
     return {
       version: FLOW_VERSION,
-      screen:  'VALUE',
-      data: {
-        error_message: 'Por favor ingresa un valor válido mayor a cero.',
-      },
+      screen:  'VALOR',
+      data: { error_message: 'Por favor ingresa un valor válido mayor a cero.' },
     };
   }
 
   const min = rawValor * 0.20;
   const max = rawValor * 0.30;
 
-  const rango_estimado =
-    `Con una propiedad de ${formatMXN(rawValor)} podrías recibir entre ${formatMXN(min)} y ${formatMXN(max)}.`;
+  const tipo_display       = TIPO_MAP[data?.tipo_propiedad]     || data?.tipo_propiedad     || '';
+  const escrituras_display = ESCRITURAS_MAP[data?.tiene_escrituras] || data?.tiene_escrituras || '';
+  // colonia_display: si no viene el texto, usar el id como fallback
+  const colonia_display    = data?.colonia_display || data?.colonia_propiedad || '';
 
-  console.log(`[StateMachine] Cálculo adelanto: valor=${rawValor} → min=${min} max=${max}`);
+  console.log(`[StateMachine] VALOR→ESTIMADO: valor=${rawValor} min=${min} max=${max}`);
 
   return {
     version: FLOW_VERSION,
-    screen:  'ESTIMATE',
+    screen:  'ESTIMADO',
     data: {
-      rango_estimado,
+      city:               data?.city               || '',
+      state:              data?.state              || '',
+      colonia_propiedad:  data?.colonia_propiedad  || '',
+      colonia_display,
+      tipo_propiedad:     data?.tipo_propiedad     || '',
+      tipo_display,
+      tiene_escrituras:   data?.tiene_escrituras   || '',
+      escrituras_display,
+      valor_display:      formatMXN(rawValor),
+      adelanto_min:       formatMXN(min),
+      adelanto_max:       formatMXN(max),
+      icono_dinero:       IMG_PLACEHOLDER,
+    },
+  };
+}
+
+/**
+ * Pantalla RESUMEN → dispara Make.com y responde con CONFIRMADO o ENTENDIDO.
+ */
+function handleResumenExchange(data, decryptedBody) {
+  const acepto     = data?.acepto_continuar;
+  const nextScreen = acepto === 'si' ? 'CONFIRMADO' : 'ENTENDIDO';
+
+  // Disparar Make.com asíncrono (no bloquea la respuesta)
+  const makeWebhookUrl = process.env.MAKE_WEBHOOK_URL;
+  if (makeWebhookUrl) {
+    const axios = require('axios');
+    axios.post(makeWebhookUrl, {
+      flow_token:  decryptedBody.flow_token,
+      timestamp:   new Date().toISOString(),
+      payload:     data,
+      phone:       decryptedBody.phone_number,
+    }).catch(err => console.error('[Make Error]', err.message));
+  }
+
+  console.log(`[StateMachine] RESUMEN→${nextScreen}: acepto_continuar=${acepto}`);
+
+  return {
+    version: FLOW_VERSION,
+    screen:  nextScreen,
+    data: {
+      city:        data?.city        || '',
+      adelanto_min: data?.adelanto_min || '',
+      adelanto_max: data?.adelanto_max || '',
     },
   };
 }
@@ -158,12 +216,20 @@ function handleValueExchange(data, decryptedBody) {
 function handleBack(screen, data = {}, flow_token, producto) {
   const backMaps = {
     adelanto: {
-      LOCATION: 'WELCOME',
-      PROPERTY: 'LOCATION',
-      VALUE:    'PROPERTY',
-      ESTIMATE: 'VALUE',
-      AUTH:     'ESTIMATE',
-      SUMMARY:  'AUTH',
+      // IDs del Flow JSON (adelanto.json)
+      UBICACION:    'BIENVENIDA',
+      PROPIEDAD:    'UBICACION',
+      VALOR:        'PROPIEDAD',
+      ESTIMADO:     'VALOR',
+      AUTORIZACION: 'ESTIMADO',
+      RESUMEN:      'AUTORIZACION',
+      // Aliases legacy por si acaso
+      LOCATION: 'BIENVENIDA',
+      PROPERTY: 'UBICACION',
+      VALUE:    'PROPIEDAD',
+      ESTIMATE: 'VALOR',
+      AUTH:     'ESTIMADO',
+      SUMMARY:  'AUTORIZACION',
     },
     listing: {
       SEARCH_LOCATION: 'WELCOME',
