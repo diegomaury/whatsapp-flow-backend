@@ -78,11 +78,20 @@ async function processFlowRequest(decryptedBody) {
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 
+// Colonias de ejemplo para testing (en producción vienen del payload de Make)
+const COLONIAS_EJEMPLO = [
+  { id: 'centro',    title: 'Centro' },
+  { id: 'residencial', title: 'Residencial' },
+  { id: 'otra',      title: 'Otra' },
+];
+
+// Imagen placeholder 1×1 px transparente
+const IMG_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
 function handleInit(decryptedBody, producto) {
   const initData = decryptedBody.data || {};
 
   if (producto === 'listing') {
-    // Para listing, WELCOME usa ${data.firstname} inyectado desde Make
     return {
       version: FLOW_VERSION,
       screen:  'WELCOME',
@@ -92,12 +101,17 @@ function handleInit(decryptedBody, producto) {
     };
   }
 
-  // adelanto: WELCOME → LOCATION necesita city_list
+  // adelanto: primera pantalla es BIENVENIDA
+  // Los datos (city, state, colonias) llegan desde Make al enviar el flow;
+  // si no vienen, se usan valores de ejemplo para testing.
   return {
     version: FLOW_VERSION,
-    screen:  'WELCOME',
+    screen:  'BIENVENIDA',
     data: {
-      city_list: CITY_LIST,
+      logo:     initData.logo     || IMG_LOGO,
+      city:     initData.city     || 'Tu ciudad',
+      state:    initData.state    || '',
+      colonias: initData.colonias || COLONIAS_EJEMPLO,
     },
   };
 }
