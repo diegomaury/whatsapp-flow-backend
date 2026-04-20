@@ -106,7 +106,10 @@ function handleInit(decryptedBody, producto) {
 
 function handleDataExchange(screen, data = {}, flow_token, producto, decryptedBody) {
   // La única pantalla con data_exchange real es VALUE (adelanto)
-  if (producto === 'adelanto' && screen === 'VALUE') {
+  // Acepta screen='VALUE' explícito O detección por contenido del data
+  const hasValor = data?.valor_aproximado_de_tu_propiedad !== undefined || data?.valor !== undefined;
+
+  if (producto === 'adelanto' && (screen === 'VALUE' || (!screen && hasValor))) {
     return handleValueExchange(data, decryptedBody);
   }
 
@@ -120,7 +123,8 @@ function handleDataExchange(screen, data = {}, flow_token, producto, decryptedBo
  * Recibe el valor de la propiedad → calcula rango 20-30% → devuelve ESTIMATE.
  */
 function handleValueExchange(data, decryptedBody) {
-  const rawValor = parseFloat(data?.valor) || 0;
+  // Acepta ambos nombres de campo: 'valor' o 'valor_aproximado_de_tu_propiedad'
+  const rawValor = parseFloat(data?.valor_aproximado_de_tu_propiedad || data?.valor) || 0;
 
   if (rawValor <= 0) {
     return {
