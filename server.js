@@ -39,6 +39,8 @@ const server = app.listen(PORT, () => {
   console.log(`  Puerto    : ${PORT}`);
   console.log(`  Webhook   : http://localhost:${PORT}/webhook`);
   console.log(`  Flow      : http://localhost:${PORT}/flow`);
+  console.log(`  Flow Xchg : http://localhost:${PORT}/flow/exchange`);
+  console.log(`  Send Msg  : http://localhost:${PORT}/send-message`);
   console.log(`  Health    : http://localhost:${PORT}/health/ready`);
   console.log(`  Env       : ${process.env.NODE_ENV || 'development'}`);
   console.log('─────────────────────────────────────────────────');

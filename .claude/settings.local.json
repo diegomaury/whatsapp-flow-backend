@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"require\\('./app'\\); console.log\\('OK — app carga sin errores'\\)\")",
+      "Bash(WEBHOOK_VERIFY_TOKEN=test API_TOKEN=test BUSINESS_PHONE=test API_VERSION=v20.0 node -e \"require\\('./app'\\); console.log\\('OK'\\)\")",
+      "Bash(echo \"exit: $?\")"
+    ]
+  }
+}

@@ -23,8 +23,9 @@ app.use(
 );
 
 // ─── Rutas ────────────────────────────────────────────────────────────────────
-app.use('/webhook', require('./src/routes/webhook'));
-app.use('/flow',    require('./src/routes/flow'));
+app.use('/webhook',      require('./src/routes/webhook'));
+app.use('/flow',         require('./src/routes/flow'));
+app.use('/send-message', require('./src/routes/sendMessage'));
 
 // ─── Health checks ────────────────────────────────────────────────────────────
 
