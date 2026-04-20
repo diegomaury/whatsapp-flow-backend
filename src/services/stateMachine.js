@@ -3,48 +3,50 @@
 /**
  * stateMachine.js — Fliphouse
  *
- * Maneja la lógica de pantallas para dos productos:
+ * Protocolo según docs.facebook.com/whatsapp/flows/guides/implementingyourflowendpoint
  *
- *   adelanto → WELCOME → LOCATION → PROPERTY → VALUE ──data_exchange──→ ESTIMATE → AUTH → SUMMARY → DONE
- *   listing  → WELCOME → SEARCH_LOCATION → PROPERTY_TYPE → BUDGET → SUMMARY_CTA → DONE
+ * Actions que llegan al endpoint:
+ *   ping          → responder { data: { status: "active" } }
+ *   INIT          → primera pantalla con su data inicial
+ *   data_exchange → lógica de negocio; responder next screen o SUCCESS
+ *   BACK          → pantalla anterior (solo si refresh_on_back: true en el flow JSON)
+ *   error         → notificación de error de Meta; responder { data: { acknowledged: true } }
  *
- * El producto se detecta comparando flow_id contra FLOW_ID_ADELANTO / FLOW_ID_LISTING.
- * Si no coincide con ninguno, se usa el flujo adelanto por default.
+ * Flujo adelanto:
+ *   BIENVENIDA → UBICACION → PROPIEDAD
+ *     → VALOR ──data_exchange──→ ESTIMADO
+ *     → AUTORIZACION → RESUMEN ──data_exchange──→ SUCCESS (cierra el flow)
  *
- * Única llamada data_exchange real:
- *   - Producto adelanto, pantalla VALUE: recibe `valor` numérico → calcula min/max → devuelve ESTIMATE.
- *   - El resto de transiciones son navigate (client-side) y no necesitan respuesta del server.
+ * Flujo listing:
+ *   WELCOME → SEARCH_LOCATION → PROPERTY_TYPE → BUDGET → SUMMARY_CTA ──data_exchange──→ SUCCESS
  */
+
+// ─── Constantes ───────────────────────────────────────────────────────────────
 
 const FLOW_VERSION = '3.0';
 
-// ─── Ciudades de La Laguna ────────────────────────────────────────────────────
+// Imagen placeholder 1×1 px transparente (para campos de imagen requeridos en testing)
+const IMG_PLACEHOLDER = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
-const CITY_LIST = [
-  { id: 'torreon',       title: 'Torreón'       },
-  { id: 'gomez_palacio', title: 'Gómez Palacio'  },
-  { id: 'lerdo',         title: 'Lerdo'          },
-  { id: 'otra',          title: 'Otra ciudad'    },
+// Colonias de ejemplo para testing (en producción vienen inyectadas por Make al enviar el flow)
+const COLONIAS_EJEMPLO = [
+  { id: 'centro',      title: 'Centro'      },
+  { id: 'residencial', title: 'Residencial' },
+  { id: 'otra',        title: 'Otra'        },
 ];
+
+// Mapas ID → texto display
+const TIPO_MAP       = { casa: 'Casa', departamento: 'Departamento', otro: 'Otro' };
+const ESCRITURAS_MAP = { si: 'Sí', no: 'No', no_se: 'No lo sé aún' };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/**
- * Detecta el producto desde el flow_id.
- * @param {string|undefined} flowId
- * @returns {'adelanto'|'listing'}
- */
 function detectProduct(flowId) {
   if (!flowId) return 'adelanto';
   if (flowId === process.env.FLOW_ID_LISTING) return 'listing';
-  return 'adelanto'; // default (incluye FLOW_ID_ADELANTO)
+  return 'adelanto';
 }
 
-/**
- * Formatea un número como pesos MXN (sin decimales, con comas).
- * @param {number} n
- * @returns {string}  Ejemplo: "$1,500,000"
- */
 function formatMXN(n) {
   return '$' + Math.round(n).toLocaleString('es-MX');
 }
@@ -58,35 +60,35 @@ async function processFlowRequest(decryptedBody) {
   console.log(`[StateMachine] producto=${producto} action="${action}" screen="${screen || 'N/A'}"`);
 
   switch (action) {
-    case 'ping':
-      return { version: FLOW_VERSION, data: { status: 'active' } };
 
+    // Health check periódico de Meta
+    case 'ping':
+      return { data: { status: 'active' } };
+
+    // Flow abierto con flow_action: "data_exchange"
     case 'INIT':
       return handleInit(decryptedBody, producto);
 
+    // Envío de formulario desde una pantalla
     case 'data_exchange':
       return handleDataExchange(screen, data, flow_token, producto, decryptedBody);
 
+    // Botón atrás con refresh_on_back: true
     case 'BACK':
       return handleBack(screen, data, flow_token, producto);
 
+    // Meta notifica que devolvimos JSON inválido en una request anterior
+    case 'error':
+      console.error(`[StateMachine] Error notification de Meta:`, JSON.stringify(data));
+      return { data: { acknowledged: true } };
+
     default:
       console.warn(`[StateMachine] Acción desconocida: "${action}"`);
-      return buildError(`Acción no soportada: ${action}`);
+      return { data: { acknowledged: true } };
   }
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
-
-// Colonias de ejemplo para testing (en producción vienen del payload de Make)
-const COLONIAS_EJEMPLO = [
-  { id: 'centro',    title: 'Centro' },
-  { id: 'residencial', title: 'Residencial' },
-  { id: 'otra',      title: 'Otra' },
-];
-
-// Imagen placeholder 1×1 px transparente
-const IMG_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
 function handleInit(decryptedBody, producto) {
   const initData = decryptedBody.data || {};
@@ -101,14 +103,14 @@ function handleInit(decryptedBody, producto) {
     };
   }
 
-  // adelanto: primera pantalla es BIENVENIDA
-  // Los datos (city, state, colonias) llegan desde Make al enviar el flow;
-  // si no vienen, se usan valores de ejemplo para testing.
+  // adelanto: primera pantalla BIENVENIDA
+  // city, state, colonias y logo llegan inyectados desde Make cuando se envía el flow.
+  // Si no vienen (testing), se usan valores de ejemplo.
   return {
     version: FLOW_VERSION,
     screen:  'BIENVENIDA',
     data: {
-      logo:     initData.logo     || IMG_LOGO,
+      logo:     initData.logo     || IMG_PLACEHOLDER,
       city:     initData.city     || 'Tu ciudad',
       state:    initData.state    || '',
       colonias: initData.colonias || COLONIAS_EJEMPLO,
@@ -118,39 +120,40 @@ function handleInit(decryptedBody, producto) {
 
 // ─── DATA EXCHANGE ────────────────────────────────────────────────────────────
 
-// Mapas para convertir IDs a textos de display
-const TIPO_MAP       = { casa: 'Casa', departamento: 'Departamento', otro: 'Otro' };
-const ESCRITURAS_MAP = { si: 'Sí', no: 'No', no_se: 'No lo sé aún' };
-
-// Imagen placeholder (1×1 px transparente) para campos de imagen requeridos
-const IMG_PLACEHOLDER = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-
 function handleDataExchange(screen, data = {}, flow_token, producto, decryptedBody) {
   if (producto === 'adelanto') {
-    // Detectar qué data_exchange es por contenido cuando falta `screen`
+    // VALOR → calcula estimado y navega a ESTIMADO
+    if (screen === 'VALOR') {
+      return handleValueExchange(data);
+    }
+
+    // RESUMEN → completa el flow y dispara Make.com
+    if (screen === 'RESUMEN') {
+      return handleResumenExchange(data, decryptedBody);
+    }
+
+    // Fallback: si screen no llega (Flow Builder test), detectar por contenido
     const hasValor   = data?.valor_aproximado !== undefined ||
                        data?.valor_aproximado_de_tu_propiedad !== undefined ||
                        data?.valor !== undefined;
     const hasResumen = data?.acepto_continuar !== undefined;
 
-    if (screen === 'VALOR' || (!screen && hasValor && !hasResumen)) {
-      return handleValueExchange(data, decryptedBody);
-    }
-    if (screen === 'RESUMEN' || (!screen && hasResumen)) {
-      return handleResumenExchange(data, decryptedBody);
-    }
+    if (hasValor && !hasResumen) return handleValueExchange(data);
+    if (hasResumen)              return handleResumenExchange(data, decryptedBody);
   }
 
-  console.warn(`[StateMachine] data_exchange inesperado en screen="${screen}" producto="${producto}"`);
-  return buildError(`data_exchange no soportado en pantalla: ${screen}`);
+  console.warn(`[StateMachine] data_exchange sin handler: screen="${screen}" producto="${producto}"`);
+  return { data: { error_message: `Pantalla no soportada: ${screen}` } };
 }
 
 /**
- * Pantalla VALOR → responde con ESTIMADO y todos sus campos requeridos.
+ * VALOR → ESTIMADO
+ * Recibe valor de la propiedad, calcula rango 20–30%, devuelve todos los campos
+ * que necesita la pantalla ESTIMADO del Flow JSON.
  */
-function handleValueExchange(data, decryptedBody) {
+function handleValueExchange(data) {
   const rawValor = parseFloat(
-    data?.valor_aproximado ||
+    data?.valor_aproximado              ||
     data?.valor_aproximado_de_tu_propiedad ||
     data?.valor
   ) || 0;
@@ -166,9 +169,8 @@ function handleValueExchange(data, decryptedBody) {
   const min = rawValor * 0.20;
   const max = rawValor * 0.30;
 
-  const tipo_display       = TIPO_MAP[data?.tipo_propiedad]     || data?.tipo_propiedad     || '';
+  const tipo_display       = TIPO_MAP[data?.tipo_propiedad]       || data?.tipo_propiedad    || '';
   const escrituras_display = ESCRITURAS_MAP[data?.tiene_escrituras] || data?.tiene_escrituras || '';
-  // colonia_display: si no viene el texto, usar el id como fallback
   const colonia_display    = data?.colonia_display || data?.colonia_propiedad || '';
 
   console.log(`[StateMachine] VALOR→ESTIMADO: valor=${rawValor} min=${min} max=${max}`);
@@ -177,13 +179,13 @@ function handleValueExchange(data, decryptedBody) {
     version: FLOW_VERSION,
     screen:  'ESTIMADO',
     data: {
-      city:               data?.city               || '',
-      state:              data?.state              || '',
-      colonia_propiedad:  data?.colonia_propiedad  || '',
+      city:               data?.city              || '',
+      state:              data?.state             || '',
+      colonia_propiedad:  data?.colonia_propiedad || '',
       colonia_display,
-      tipo_propiedad:     data?.tipo_propiedad     || '',
+      tipo_propiedad:     data?.tipo_propiedad    || '',
       tipo_display,
-      tiene_escrituras:   data?.tiene_escrituras   || '',
+      tiene_escrituras:   data?.tiene_escrituras  || '',
       escrituras_display,
       valor_display:      formatMXN(rawValor),
       adelanto_min:       formatMXN(min),
@@ -194,33 +196,40 @@ function handleValueExchange(data, decryptedBody) {
 }
 
 /**
- * Pantalla RESUMEN → dispara Make.com y responde con CONFIRMADO o ENTENDIDO.
+ * RESUMEN → SUCCESS (cierra el flow)
+ * Según la doc, la respuesta que cierra el flow es:
+ *   { screen: "SUCCESS", data: { extension_message_response: { params: { flow_token, ...data } } } }
+ * También dispara Make.com de forma asíncrona.
  */
 function handleResumenExchange(data, decryptedBody) {
-  const acepto     = data?.acepto_continuar;
-  const nextScreen = acepto === 'si' ? 'CONFIRMADO' : 'ENTENDIDO';
-
-  // Disparar Make.com asíncrono (no bloquea la respuesta)
+  // Disparar Make.com asíncrono — no bloquea la respuesta a Meta
   const makeWebhookUrl = process.env.MAKE_WEBHOOK_URL;
   if (makeWebhookUrl) {
     const axios = require('axios');
     axios.post(makeWebhookUrl, {
-      flow_token:  decryptedBody.flow_token,
-      timestamp:   new Date().toISOString(),
-      payload:     data,
-      phone:       decryptedBody.phone_number,
+      flow_token: decryptedBody.flow_token,
+      timestamp:  new Date().toISOString(),
+      payload:    data,
+      phone:      decryptedBody.phone_number,
     }).catch(err => console.error('[Make Error]', err.message));
   }
 
-  console.log(`[StateMachine] RESUMEN→${nextScreen}: acepto_continuar=${acepto}`);
+  console.log(`[StateMachine] RESUMEN→SUCCESS: acepto_continuar=${data?.acepto_continuar}`);
 
+  // Respuesta de cierre según protocolo de WhatsApp Flows
   return {
     version: FLOW_VERSION,
-    screen:  nextScreen,
+    screen:  'SUCCESS',
     data: {
-      city:        data?.city        || '',
-      adelanto_min: data?.adelanto_min || '',
-      adelanto_max: data?.adelanto_max || '',
+      extension_message_response: {
+        params: {
+          flow_token:       decryptedBody.flow_token,
+          acepto_continuar: data?.acepto_continuar || 'no',
+          ciudad:           data?.city             || '',
+          adelanto_min:     data?.adelanto_min      || '',
+          adelanto_max:     data?.adelanto_max      || '',
+        },
+      },
     },
   };
 }
@@ -228,47 +237,30 @@ function handleResumenExchange(data, decryptedBody) {
 // ─── BACK ─────────────────────────────────────────────────────────────────────
 
 function handleBack(screen, data = {}, flow_token, producto) {
-  const backMaps = {
-    adelanto: {
-      // IDs del Flow JSON (adelanto.json)
-      UBICACION:    'BIENVENIDA',
-      PROPIEDAD:    'UBICACION',
-      VALOR:        'PROPIEDAD',
-      ESTIMADO:     'VALOR',
-      AUTORIZACION: 'ESTIMADO',
-      RESUMEN:      'AUTORIZACION',
-      // Aliases legacy por si acaso
-      LOCATION: 'BIENVENIDA',
-      PROPERTY: 'UBICACION',
-      VALUE:    'PROPIEDAD',
-      ESTIMATE: 'VALOR',
-      AUTH:     'ESTIMADO',
-      SUMMARY:  'AUTORIZACION',
-    },
-    listing: {
-      SEARCH_LOCATION: 'WELCOME',
-      PROPERTY_TYPE:   'SEARCH_LOCATION',
-      BUDGET:          'PROPERTY_TYPE',
-      SUMMARY_CTA:     'BUDGET',
-    },
-  };
+  const backMap = producto === 'listing'
+    ? {
+        SEARCH_LOCATION: 'WELCOME',
+        PROPERTY_TYPE:   'SEARCH_LOCATION',
+        BUDGET:          'PROPERTY_TYPE',
+        SUMMARY_CTA:     'BUDGET',
+      }
+    : {
+        UBICACION:    'BIENVENIDA',
+        PROPIEDAD:    'UBICACION',
+        VALOR:        'PROPIEDAD',
+        ESTIMADO:     'VALOR',
+        AUTORIZACION: 'ESTIMADO',
+        RESUMEN:      'AUTORIZACION',
+      };
 
-  const map  = backMaps[producto] || backMaps.adelanto;
-  const prev = map[screen] || 'WELCOME';
-
-  console.log(`[StateMachine] BACK: ${screen} → ${prev} (producto: ${producto})`);
+  const prev = backMap[screen] || 'BIENVENIDA';
+  console.log(`[StateMachine] BACK: ${screen} → ${prev}`);
 
   return {
     version: FLOW_VERSION,
     screen:  prev,
-    data:    { flow_token, ...data },
+    data:    { ...data, flow_token },
   };
-}
-
-// ─── Error helper ─────────────────────────────────────────────────────────────
-
-function buildError(message) {
-  return { version: FLOW_VERSION, data: { error: message } };
 }
 
 module.exports = { processFlowRequest };
