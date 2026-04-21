@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(node -e \"require\\('dotenv'\\).config\\(\\); const k = process.env.PRIVATE_KEY; console.log\\('KEY presente:', !!k\\); console.log\\('Longitud:', k?.length\\); console.log\\('Primeros chars:', k?.slice\\(0,30\\)\\);\")",
-      "mcp__plugin_Notion_notion__notion-fetch"
+      "mcp__plugin_Notion_notion__notion-fetch",
+      "mcp__claude_ai_Make__hooks_get",
+      "mcp__claude_ai_Make__hooks_list",
+      "mcp__claude_ai_Make__scenarios_update",
+      "mcp__claude_ai_Make__hooks_create",
+      "mcp__claude_ai_Make__scenarios_create",
+      "mcp__claude_ai_Make__scenarios_get"
     ]
   }
 }
