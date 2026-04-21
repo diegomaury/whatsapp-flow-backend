@@ -72,7 +72,7 @@ function decryptRequest(body, privateKeyPem) {
   // ── PASO 4: Desencriptar payload con AES-256-GCM ──────────────────────────
   let decryptedBuffer;
   try {
-    const decipher = crypto.createDecipheriv('aes-256-gcm', aesKeyBuffer, initialVectorBuffer);
+    const decipher = crypto.createDecipheriv('aes-128-gcm', aesKeyBuffer, initialVectorBuffer);
     decipher.setAuthTag(authTag);
     decryptedBuffer = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
   } catch (err) {
@@ -107,7 +107,7 @@ function encryptResponse(responseData, aesKeyBuffer, initialVectorBuffer) {
   }
 
   // ── PASO 2: Cifrar con AES-256-GCM y el IV flippeado ─────────────────────
-  const cipher = crypto.createCipheriv('aes-256-gcm', aesKeyBuffer, flippedIV);
+  const cipher = crypto.createCipheriv('aes-128-gcm', aesKeyBuffer, flippedIV);
   const responseJson = JSON.stringify(responseData);
 
   const encryptedData = Buffer.concat([
