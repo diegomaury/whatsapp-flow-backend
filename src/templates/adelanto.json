@@ -1,515 +1,628 @@
 {
-  "version": "7.3",
-  "data_api_version": "4.0",
-  "routing_model": {
-    "WELCOME":       ["LOCATION"],
-    "LOCATION":      ["PROPERTY"],
-    "PROPERTY":      ["VALUE"],
-    "VALUE":         ["ESTIMATE"],
-    "ESTIMATE":      ["AUTHORIZATION"],
-    "AUTHORIZATION": ["SUMMARY"],
-    "SUMMARY":       ["COMPLETE_YES", "COMPLETE_NO"]
-  },
-  "screens": [
-
-    {
-      "id": "WELCOME",
-      "title": "Fliphouse",
-      "data": {
-        "city": {
-          "type": "string",
-          "__example__": "Monterrey"
-        },
-        "state": {
-          "type": "string",
-          "__example__": "Nuevo León"
-        },
-        "colonias": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id":    { "type": "string" },
-              "title": { "type": "string" }
-            }
-          },
-          "__example__": [
-            { "id": "San Pedro Garza García", "title": "San Pedro Garza García" },
-            { "id": "Cumbres",                "title": "Cumbres" },
-            { "id": "Del Valle",              "title": "Del Valle" }
-          ]
-        },
-        "logo_fliphouse": {
-          "type": "string",
-          "__example__": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-        }
-      },
-      "layout": {
-        "type": "SingleColumnLayout",
-        "children": [
-          {
-            "type": "Image",
-            "src": "${data.logo_fliphouse}",
-            "width": 300,
-            "height": 100,
-            "scale-type": "contain",
-            "alt-text": "Logo Fliphouse"
-          },
-          {
-            "type": "TextHeading",
-            "text": "Califica tu propiedad en 2 minutos"
-          },
-          {
-            "type": "TextBody",
-            "text": "Responde 6 preguntas rápidas y recibe al instante un estimado del adelanto que podrías obtener por tu propiedad. Es gratuito y sin compromiso."
-          },
-          {
-            "type": "Form",
-            "name": "welcome_form",
-            "children": [
-              {
-                "type": "EmbeddedLink",
-                "text": "Ver Aviso de Privacidad",
-                "on-click-action": {
-                  "name": "open_url",
-                  "url": "https://fliphouse.mx/aviso-de-privacidad"
-                }
-              },
-              {
-                "type": "OptIn",
-                "name": "acepta_privacidad",
-                "label": "He leído y acepto el Aviso de Privacidad de Fliphouse",
-                "required": true
-              }
-            ]
-          },
-          {
-            "type": "Footer",
-            "label": "Comenzar calificación",
-            "on-click-action": {
-              "name": "navigate",
-              "next": { "type": "screen", "name": "LOCATION" },
-              "payload": {}
-            }
-          }
-        ]
-      }
-    },
-
-    {
-      "id": "LOCATION",
-      "title": "Tu Ubicación",
-      "layout": {
-        "type": "SingleColumnLayout",
-        "children": [
-          {
-            "type": "TextCaption",
-            "text": "Paso 1 de 6"
-          },
-          {
-            "type": "TextHeading",
-            "text": "Tu ubicación"
-          },
-          {
-            "type": "TextBody",
-            "text": "Tu propiedad está en ${screen.WELCOME.data.city}, ${screen.WELCOME.data.state}. Selecciona la colonia exacta."
-          },
-          {
-            "type": "Form",
-            "name": "location_form",
-            "children": [
-              {
-                "type": "Dropdown",
-                "name": "colonia_propiedad",
-                "label": "Colonia",
-                "required": true,
-                "data-source": "${screen.WELCOME.data.colonias}"
-              }
-            ]
-          },
-          {
-            "type": "Footer",
-            "label": "Continuar",
-            "on-click-action": {
-              "name": "navigate",
-              "next": { "type": "screen", "name": "PROPERTY" },
-              "payload": {}
-            }
-          }
-        ]
-      }
-    },
-
-    {
-      "id": "PROPERTY",
-      "title": "Tu Propiedad",
-      "sensitive": ["tiene_escrituras"],
-      "layout": {
-        "type": "SingleColumnLayout",
-        "children": [
-          {
-            "type": "TextCaption",
-            "text": "Paso 2 de 6"
-          },
-          {
-            "type": "TextHeading",
-            "text": "Tu propiedad"
-          },
-          {
-            "type": "Form",
-            "name": "property_form",
-            "children": [
-              {
-                "type": "RadioButtonsGroup",
-                "name": "tipo_propiedad",
-                "label": "Tipo de propiedad",
-                "required": true,
-                "data-source": [
-                  { "id": "Casa",         "title": "Casa" },
-                  { "id": "Departamento", "title": "Departamento" },
-                  { "id": "Otro",         "title": "Otro" }
-                ]
-              },
-              {
-                "type": "RadioButtonsGroup",
-                "name": "tiene_escrituras",
-                "label": "¿Cuenta con escrituras?",
-                "required": true,
-                "data-source": [
-                  { "id": "Sí",           "title": "Sí" },
-                  { "id": "No",           "title": "No" },
-                  { "id": "No lo sé aún", "title": "No lo sé aún" }
-                ]
-              }
-            ]
-          },
-          {
-            "type": "Footer",
-            "label": "Continuar",
-            "on-click-action": {
-              "name": "navigate",
-              "next": { "type": "screen", "name": "VALUE" },
-              "payload": {}
-            }
-          }
-        ]
-      }
-    },
-
-    {
-      "id": "VALUE",
-      "title": "Valor de tu Propiedad",
-      "layout": {
-        "type": "SingleColumnLayout",
-        "children": [
-          {
-            "type": "TextCaption",
-            "text": "Paso 3 de 6"
-          },
-          {
-            "type": "TextHeading",
-            "text": "Valor de tu propiedad"
-          },
-          {
-            "type": "TextCaption",
-            "text": "No tiene que ser exacto. Solo danos una idea del valor aproximado en el mercado."
-          },
-          {
-            "type": "Form",
-            "name": "value_form",
-            "children": [
-              {
-                "type": "TextInput",
-                "name": "valor_aproximado_de_tu_propiedad",
-                "label": "Valor aproximado",
-                "label-variant": "large",
-                "input-type": "number",
-                "required": true,
-                "helper-text": "Ingresa el valor en pesos mexicanos"
-              }
-            ]
-          },
-          {
-            "type": "Footer",
-            "label": "Ver mi estimado",
-            "on-click-action": {
-              "name": "data_exchange",
-              "payload": {
-                "valor_aproximado_de_tu_propiedad": "${form.valor_aproximado_de_tu_propiedad}"
-              }
-            }
-          }
-        ]
-      }
-    },
-
-    {
-      "id": "ESTIMATE",
-      "title": "Tu Adelanto Estimado",
-      "data": {
-        "valor_display": {
-          "type": "string",
-          "__example__": "$2,000,000"
-        },
-        "adelanto_min": {
-          "type": "string",
-          "__example__": "$400,000"
-        },
-        "adelanto_max": {
-          "type": "string",
-          "__example__": "$600,000"
-        },
-        "money_icon": {
-          "type": "string",
-          "__example__": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-        }
-      },
-      "layout": {
-        "type": "SingleColumnLayout",
-        "children": [
-          {
-            "type": "Image",
-            "src": "${data.money_icon}",
-            "width": 120,
-            "height": 120,
-            "scale-type": "contain",
-            "alt-text": "Adelanto estimado"
-          },
-          {
-            "type": "TextCaption",
-            "text": "Paso 4 de 6"
-          },
-          {
-            "type": "TextHeading",
-            "text": "Tu adelanto estimado"
-          },
-          {
-            "type": "TextBody",
-            "text": "Con una propiedad de ${data.valor_display} podrías recibir entre ${data.adelanto_min} y ${data.adelanto_max} de adelanto."
-          },
-          {
-            "type": "TextCaption",
-            "text": "Monto sujeto a evaluación formal. El adelanto se formaliza ante notario y está condicionado a la aprobación del proceso de due diligence de Fliphouse."
-          },
-          {
-            "type": "Footer",
-            "label": "Quiero que me contacten",
-            "on-click-action": {
-              "name": "navigate",
-              "next": { "type": "screen", "name": "AUTHORIZATION" },
-              "payload": {}
-            }
-          }
-        ]
-      }
-    },
-
-    {
-      "id": "AUTHORIZATION",
-      "title": "Autorización",
-      "layout": {
-        "type": "SingleColumnLayout",
-        "children": [
-          {
-            "type": "TextCaption",
-            "text": "Paso 5 de 6"
-          },
-          {
-            "type": "TextHeading",
-            "text": "Autorización"
-          },
-          {
-            "type": "TextBody",
-            "text": "Para que un asesor de Fliphouse pueda darte seguimiento personalizado, necesitamos tu autorización para contactarte."
-          },
-          {
-            "type": "Form",
-            "name": "authorization_form",
-            "children": [
-              {
-                "type": "RadioButtonsGroup",
-                "name": "acepto_continuar",
-                "label": "¿Autorizas que te contactemos?",
-                "required": true,
-                "data-source": [
-                  { "id": "si", "title": "Sí, autorizo que me contacten" },
-                  { "id": "no", "title": "No por ahora" }
-                ]
-              }
-            ]
-          },
-          {
-            "type": "Footer",
-            "label": "Finalizar",
-            "on-click-action": {
-              "name": "navigate",
-              "next": { "type": "screen", "name": "SUMMARY" },
-              "payload": {}
-            }
-          }
-        ]
-      }
-    },
-
-    {
-      "id": "SUMMARY",
-      "title": "Resumen",
-      "layout": {
-        "type": "SingleColumnLayout",
-        "children": [
-          {
-            "type": "TextCaption",
-            "text": "Paso 6 de 6"
-          },
-          {
-            "type": "TextHeading",
-            "text": "Revisa tu información"
-          },
-          {
-            "type": "TextBody",
-            "text": "Ciudad y colonia: ${screen.WELCOME.data.city} — ${screen.LOCATION.form.colonia_propiedad}"
-          },
-          {
-            "type": "TextBody",
-            "text": "Propiedad: ${screen.PROPERTY.form.tipo_propiedad} — Escrituras: ${screen.PROPERTY.form.tiene_escrituras}"
-          },
-          {
-            "type": "TextBody",
-            "text": "Valor estimado: ${screen.VALUE.form.valor_aproximado_de_tu_propiedad}"
-          },
-          {
-            "type": "TextBody",
-            "text": "Rango de adelanto: ${screen.ESTIMATE.data.adelanto_min} — ${screen.ESTIMATE.data.adelanto_max}"
-          },
-          {
-            "type": "Footer",
-            "label": "Confirmar y finalizar",
-            "on-click-action": {
-              "name": "data_exchange",
-              "payload": {
-                "city":                              "${screen.WELCOME.data.city}",
-                "state":                             "${screen.WELCOME.data.state}",
-                "colonia_propiedad":                 "${screen.LOCATION.form.colonia_propiedad}",
-                "tipo_propiedad":                    "${screen.PROPERTY.form.tipo_propiedad}",
-                "tiene_escrituras":                  "${screen.PROPERTY.form.tiene_escrituras}",
-                "valor_aproximado_de_tu_propiedad":  "${screen.VALUE.form.valor_aproximado_de_tu_propiedad}",
-                "adelanto_min":                      "${screen.ESTIMATE.data.adelanto_min}",
-                "adelanto_max":                      "${screen.ESTIMATE.data.adelanto_max}",
-                "acepto_continuar":                  "${screen.AUTHORIZATION.form.acepto_continuar}"
-              }
-            }
-          }
-        ]
-      }
-    },
-
-    {
-      "id": "COMPLETE_YES",
-      "title": "¡Listo!",
-      "terminal": true,
-      "success": true,
-      "data": {
-        "city":                             { "type": "string", "__example__": "Monterrey" },
-        "state":                            { "type": "string", "__example__": "Nuevo León" },
-        "colonia_propiedad":                { "type": "string", "__example__": "San Pedro Garza García" },
-        "tipo_propiedad":                   { "type": "string", "__example__": "Casa" },
-        "tiene_escrituras":                 { "type": "string", "__example__": "Sí" },
-        "valor_aproximado_de_tu_propiedad": { "type": "string", "__example__": "2000000" },
-        "adelanto_min":                     { "type": "string", "__example__": "$400,000" },
-        "adelanto_max":                     { "type": "string", "__example__": "$600,000" },
-        "acepto_continuar":                 { "type": "string", "__example__": "si" }
-      },
-      "layout": {
-        "type": "SingleColumnLayout",
-        "children": [
-          {
-            "type": "TextHeading",
-            "text": "¡Todo listo!"
-          },
-          {
-            "type": "TextBody",
-            "text": "Recibimos tu información. Un asesor de Fliphouse se comunicará contigo en breve para darte seguimiento personalizado."
-          },
-          {
-            "type": "TextCaption",
-            "text": "Este proceso no genera ningún compromiso de tu parte. Puedes cancelar o pausar en cualquier momento."
-          },
-          {
-            "type": "Footer",
-            "label": "Cerrar",
-            "on-click-action": {
-              "name": "complete",
-              "payload": {
-                "city":                             "${data.city}",
-                "state":                            "${data.state}",
-                "colonia_propiedad":                "${data.colonia_propiedad}",
-                "tipo_propiedad":                   "${data.tipo_propiedad}",
-                "tiene_escrituras":                 "${data.tiene_escrituras}",
-                "valor_aproximado_de_tu_propiedad": "${data.valor_aproximado_de_tu_propiedad}",
-                "adelanto_min":                     "${data.adelanto_min}",
-                "adelanto_max":                     "${data.adelanto_max}",
-                "acepto_continuar":                 "${data.acepto_continuar}",
-                "estado":                           "completado"
-              }
-            }
-          }
-        ]
-      }
-    },
-
-    {
-      "id": "COMPLETE_NO",
-      "title": "Entendido",
-      "terminal": true,
-      "success": false,
-      "data": {
-        "city":                             { "type": "string", "__example__": "Monterrey" },
-        "state":                            { "type": "string", "__example__": "Nuevo León" },
-        "colonia_propiedad":                { "type": "string", "__example__": "San Pedro Garza García" },
-        "tipo_propiedad":                   { "type": "string", "__example__": "Casa" },
-        "tiene_escrituras":                 { "type": "string", "__example__": "Sí" },
-        "valor_aproximado_de_tu_propiedad": { "type": "string", "__example__": "2000000" },
-        "adelanto_min":                     { "type": "string", "__example__": "$400,000" },
-        "adelanto_max":                     { "type": "string", "__example__": "$600,000" },
-        "acepto_continuar":                 { "type": "string", "__example__": "no" }
-      },
-      "layout": {
-        "type": "SingleColumnLayout",
-        "children": [
-          {
-            "type": "TextHeading",
-            "text": "Entendido"
-          },
-          {
-            "type": "TextBody",
-            "text": "Gracias por tomarte el tiempo de conocer Fliphouse. No te contactaremos, pero cuando estés listo, este canal seguirá abierto para retomar tu proceso."
-          },
-          {
-            "type": "TextCaption",
-            "text": "Tu información fue registrada de forma segura y no será compartida con terceros."
-          },
-          {
-            "type": "Footer",
-            "label": "Cerrar",
-            "on-click-action": {
-              "name": "complete",
-              "payload": {
-                "city":                             "${data.city}",
-                "state":                            "${data.state}",
-                "colonia_propiedad":                "${data.colonia_propiedad}",
-                "tipo_propiedad":                   "${data.tipo_propiedad}",
-                "tiene_escrituras":                 "${data.tiene_escrituras}",
-                "valor_aproximado_de_tu_propiedad": "${data.valor_aproximado_de_tu_propiedad}",
-                "adelanto_min":                     "${data.adelanto_min}",
-                "adelanto_max":                     "${data.adelanto_max}",
-                "acepto_continuar":                 "${data.acepto_continuar}",
-                "estado":                           "completado"
-              }
-            }
-          }
-        ]
-      }
-    }
-
-  ]
+  "routing_model": {
+    "WELCOME": [
+      "LOCATION"
+    ],
+    "LOCATION": [
+      "PROPERTY"
+    ],
+    "PROPERTY": [
+      "VALUE"
+    ],
+    "VALUE": [
+      "ESTIMATE"
+    ],
+    "ESTIMATE": [
+      "AUTHORIZATION"
+    ],
+    "AUTHORIZATION": [
+      "SUMMARY"
+    ],
+    "SUMMARY": [
+      "COMPLETE_YES",
+      "COMPLETE_NO"
+    ]
+  },
+  "data_api_version": "4.0",
+  "version": "7.3",
+  "screens": [
+    {
+      "id": "WELCOME",
+      "title": "Fliphouse",
+      "data": {
+        "city": {
+          "type": "string",
+          "__example__": "Monterrey"
+        },
+        "state": {
+          "type": "string",
+          "__example__": "Nuevo León"
+        },
+        "colonias": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            }
+          },
+          "__example__": [
+            {
+              "id": "San Pedro Garza García",
+              "title": "San Pedro Garza García"
+            },
+            {
+              "id": "Cumbres",
+              "title": "Cumbres"
+            },
+            {
+              "id": "Del Valle",
+              "title": "Del Valle"
+            }
+          ]
+        },
+        "logo_fliphouse": {
+          "type": "string",
+          "__example__": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "Image",
+            "src": "${data.logo_fliphouse}",
+            "width": 300,
+            "height": 100,
+            "scale-type": "contain",
+            "alt-text": "Logo Fliphouse"
+          },
+          {
+            "type": "TextHeading",
+            "text": "Califica tu propiedad en 2 minutos"
+          },
+          {
+            "type": "TextBody",
+            "text": "Responde 6 preguntas rápidas y recibe al instante un estimado del adelanto que podrías obtener por tu propiedad. Es gratuito y sin compromiso."
+          },
+          {
+            "type": "Form",
+            "name": "welcome_form",
+            "children": [
+              {
+                "type": "EmbeddedLink",
+                "text": "Ver Aviso de Privacidad",
+                "on-click-action": {
+                  "name": "open_url",
+                  "url": "https://fliphouse.mx/aviso-de-privacidad"
+                }
+              },
+              {
+                "type": "OptIn",
+                "name": "acepta_privacidad",
+                "label": "He leído y acepto el Aviso de Privacidad de Fliphouse",
+                "required": true
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Comenzar calificación",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "LOCATION"
+              },
+              "payload": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "LOCATION",
+      "title": "Tu Ubicación",
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextCaption",
+            "text": "Paso 1 de 6"
+          },
+          {
+            "type": "TextHeading",
+            "text": "Tu ubicación"
+          },
+          {
+            "type": "TextBody",
+            "text": "Tu propiedad está en ${screen.WELCOME.data.city}, ${screen.WELCOME.data.state}. Selecciona la colonia exacta."
+          },
+          {
+            "type": "Form",
+            "name": "location_form",
+            "children": [
+              {
+                "type": "Dropdown",
+                "name": "colonia_propiedad",
+                "label": "Colonia",
+                "required": true,
+                "data-source": "${screen.WELCOME.data.colonias}"
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Continuar",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "PROPERTY"
+              },
+              "payload": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "PROPERTY",
+      "title": "Tu Propiedad",
+      "sensitive": [
+        "tiene_escrituras"
+      ],
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextCaption",
+            "text": "Paso 2 de 6"
+          },
+          {
+            "type": "TextHeading",
+            "text": "Tu propiedad"
+          },
+          {
+            "type": "Form",
+            "name": "property_form",
+            "children": [
+              {
+                "type": "RadioButtonsGroup",
+                "name": "tipo_propiedad",
+                "label": "Tipo de propiedad",
+                "required": true,
+                "data-source": [
+                  {
+                    "id": "Casa",
+                    "title": "Casa"
+                  },
+                  {
+                    "id": "Departamento",
+                    "title": "Departamento"
+                  },
+                  {
+                    "id": "Otro",
+                    "title": "Otro"
+                  }
+                ]
+              },
+              {
+                "type": "RadioButtonsGroup",
+                "name": "tiene_escrituras",
+                "label": "¿Cuenta con escrituras?",
+                "required": true,
+                "data-source": [
+                  {
+                    "id": "Sí",
+                    "title": "Sí"
+                  },
+                  {
+                    "id": "No",
+                    "title": "No"
+                  },
+                  {
+                    "id": "No lo sé aún",
+                    "title": "No lo sé aún"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Continuar",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "VALUE"
+              },
+              "payload": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "VALUE",
+      "title": "Valor de tu Propiedad",
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextCaption",
+            "text": "Paso 3 de 6"
+          },
+          {
+            "type": "TextHeading",
+            "text": "Valor de tu propiedad"
+          },
+          {
+            "type": "TextCaption",
+            "text": "No tiene que ser exacto. Solo danos una idea del valor aproximado en el mercado."
+          },
+          {
+            "type": "Form",
+            "name": "value_form",
+            "children": [
+              {
+                "type": "TextInput",
+                "name": "valor_aproximado_de_tu_propiedad",
+                "label": "Valor aproximado",
+                "label-variant": "large",
+                "input-type": "number",
+                "required": true,
+                "helper-text": "Ingresa el valor en pesos mexicanos"
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Ver mi estimado",
+            "on-click-action": {
+              "name": "data_exchange",
+              "payload": {
+                "valor_aproximado_de_tu_propiedad": "${form.valor_aproximado_de_tu_propiedad}"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ESTIMATE",
+      "title": "Tu Adelanto Estimado",
+      "data": {
+        "valor_display": {
+          "type": "string",
+          "__example__": "$2,000,000"
+        },
+        "adelanto_min": {
+          "type": "string",
+          "__example__": "$400,000"
+        },
+        "adelanto_max": {
+          "type": "string",
+          "__example__": "$600,000"
+        },
+        "money_icon": {
+          "type": "string",
+          "__example__": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "Image",
+            "src": "${data.money_icon}",
+            "width": 120,
+            "height": 120,
+            "scale-type": "contain",
+            "alt-text": "Adelanto estimado"
+          },
+          {
+            "type": "TextCaption",
+            "text": "Paso 4 de 6"
+          },
+          {
+            "type": "TextHeading",
+            "text": "Tu adelanto estimado"
+          },
+          {
+            "type": "TextBody",
+            "text": "Con una propiedad de ${data.valor_display} podrías recibir entre ${data.adelanto_min} y ${data.adelanto_max} de adelanto."
+          },
+          {
+            "type": "TextCaption",
+            "text": "Monto sujeto a evaluación formal. El adelanto se formaliza ante notario y está condicionado a la aprobación del proceso de due diligence de Fliphouse."
+          },
+          {
+            "type": "Footer",
+            "label": "Quiero que me contacten",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "AUTHORIZATION"
+              },
+              "payload": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "AUTHORIZATION",
+      "title": "Autorización",
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextCaption",
+            "text": "Paso 5 de 6"
+          },
+          {
+            "type": "TextHeading",
+            "text": "Autorización"
+          },
+          {
+            "type": "TextBody",
+            "text": "Para que un asesor de Fliphouse pueda darte seguimiento personalizado, necesitamos tu autorización para contactarte."
+          },
+          {
+            "type": "Form",
+            "name": "authorization_form",
+            "children": [
+              {
+                "type": "RadioButtonsGroup",
+                "name": "acepto_continuar",
+                "label": "¿Autorizas que te contactemos?",
+                "required": true,
+                "data-source": [
+                  {
+                    "id": "si",
+                    "title": "Sí, autorizo que me contacten"
+                  },
+                  {
+                    "id": "no",
+                    "title": "No por ahora"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Finalizar",
+            "on-click-action": {
+              "name": "navigate",
+              "next": {
+                "type": "screen",
+                "name": "SUMMARY"
+              },
+              "payload": {}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "SUMMARY",
+      "title": "Resumen",
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextCaption",
+            "text": "Paso 6 de 6"
+          },
+          {
+            "type": "TextHeading",
+            "text": "Revisa tu información"
+          },
+          {
+            "type": "TextBody",
+            "text": "Ciudad y colonia: ${screen.WELCOME.data.city} — ${screen.LOCATION.form.colonia_propiedad}"
+          },
+          {
+            "type": "TextBody",
+            "text": "Propiedad: ${screen.PROPERTY.form.tipo_propiedad} — Escrituras: ${screen.PROPERTY.form.tiene_escrituras}"
+          },
+          {
+            "type": "TextBody",
+            "text": "Valor estimado: ${screen.VALUE.form.valor_aproximado_de_tu_propiedad}"
+          },
+          {
+            "type": "TextBody",
+            "text": "Rango de adelanto: ${screen.ESTIMATE.data.adelanto_min} — ${screen.ESTIMATE.data.adelanto_max}"
+          },
+          {
+            "type": "Footer",
+            "label": "Confirmar y finalizar",
+            "on-click-action": {
+              "name": "data_exchange",
+              "payload": {
+                "city": "${screen.WELCOME.data.city}",
+                "state": "${screen.WELCOME.data.state}",
+                "colonia_propiedad": "${screen.LOCATION.form.colonia_propiedad}",
+                "tipo_propiedad": "${screen.PROPERTY.form.tipo_propiedad}",
+                "tiene_escrituras": "${screen.PROPERTY.form.tiene_escrituras}",
+                "valor_aproximado_de_tu_propiedad": "${screen.VALUE.form.valor_aproximado_de_tu_propiedad}",
+                "adelanto_min": "${screen.ESTIMATE.data.adelanto_min}",
+                "adelanto_max": "${screen.ESTIMATE.data.adelanto_max}",
+                "acepto_continuar": "${screen.AUTHORIZATION.form.acepto_continuar}"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "COMPLETE_YES",
+      "title": "¡Listo!",
+      "terminal": true,
+      "success": true,
+      "data": {
+        "city": {
+          "type": "string",
+          "__example__": "Monterrey"
+        },
+        "state": {
+          "type": "string",
+          "__example__": "Nuevo León"
+        },
+        "colonia_propiedad": {
+          "type": "string",
+          "__example__": "San Pedro Garza García"
+        },
+        "tipo_propiedad": {
+          "type": "string",
+          "__example__": "Casa"
+        },
+        "tiene_escrituras": {
+          "type": "string",
+          "__example__": "Sí"
+        },
+        "valor_aproximado_de_tu_propiedad": {
+          "type": "string",
+          "__example__": "2000000"
+        },
+        "adelanto_min": {
+          "type": "string",
+          "__example__": "$400,000"
+        },
+        "adelanto_max": {
+          "type": "string",
+          "__example__": "$600,000"
+        },
+        "acepto_continuar": {
+          "type": "string",
+          "__example__": "si"
+        }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "¡Todo listo!"
+          },
+          {
+            "type": "TextBody",
+            "text": "Recibimos tu información. Un asesor de Fliphouse se comunicará contigo en breve para darte seguimiento personalizado."
+          },
+          {
+            "type": "TextCaption",
+            "text": "Este proceso no genera ningún compromiso de tu parte. Puedes cancelar o pausar en cualquier momento."
+          },
+          {
+            "type": "Footer",
+            "label": "Cerrar",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "city": "${data.city}",
+                "state": "${data.state}",
+                "colonia_propiedad": "${data.colonia_propiedad}",
+                "tipo_propiedad": "${data.tipo_propiedad}",
+                "tiene_escrituras": "${data.tiene_escrituras}",
+                "valor_aproximado_de_tu_propiedad": "${data.valor_aproximado_de_tu_propiedad}",
+                "adelanto_min": "${data.adelanto_min}",
+                "adelanto_max": "${data.adelanto_max}",
+                "acepto_continuar": "${data.acepto_continuar}",
+                "estado": "completado"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "COMPLETE_NO",
+      "title": "Entendido",
+      "terminal": true,
+      "success": false,
+      "data": {
+        "city": {
+          "type": "string",
+          "__example__": "Monterrey"
+        },
+        "state": {
+          "type": "string",
+          "__example__": "Nuevo León"
+        },
+        "colonia_propiedad": {
+          "type": "string",
+          "__example__": "San Pedro Garza García"
+        },
+        "tipo_propiedad": {
+          "type": "string",
+          "__example__": "Casa"
+        },
+        "tiene_escrituras": {
+          "type": "string",
+          "__example__": "Sí"
+        },
+        "valor_aproximado_de_tu_propiedad": {
+          "type": "string",
+          "__example__": "2000000"
+        },
+        "adelanto_min": {
+          "type": "string",
+          "__example__": "$400,000"
+        },
+        "adelanto_max": {
+          "type": "string",
+          "__example__": "$600,000"
+        },
+        "acepto_continuar": {
+          "type": "string",
+          "__example__": "no"
+        }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Entendido"
+          },
+          {
+            "type": "TextBody",
+            "text": "Gracias por tomarte el tiempo de conocer Fliphouse. No te contactaremos, pero cuando estés listo, este canal seguirá abierto para retomar tu proceso."
+          },
+          {
+            "type": "TextCaption",
+            "text": "Tu información fue registrada de forma segura y no será compartida con terceros."
+          },
+          {
+            "type": "Footer",
+            "label": "Cerrar",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "city": "${data.city}",
+                "state": "${data.state}",
+                "colonia_propiedad": "${data.colonia_propiedad}",
+                "tipo_propiedad": "${data.tipo_propiedad}",
+                "tiene_escrituras": "${data.tiene_escrituras}",
+                "valor_aproximado_de_tu_propiedad": "${data.valor_aproximado_de_tu_propiedad}",
+                "adelanto_min": "${data.adelanto_min}",
+                "adelanto_max": "${data.adelanto_max}",
+                "acepto_continuar": "${data.acepto_continuar}",
+                "estado": "completado"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
 }
