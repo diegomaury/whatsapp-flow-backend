@@ -5,3 +5,5 @@ keys/
 g
 .claude/worktrees/brave-allen-a2f9f8
 .claude/worktrees/priceless-antonelli-5e14d7
+/keys/*.pem
+C:\Users\DiegoLocal\whatsapp-flow-backend\keys

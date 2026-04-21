@@ -115,11 +115,17 @@
             "text": "Tu propiedad está en ${screen.WELCOME.data.city}, ${screen.WELCOME.data.state}. Selecciona la colonia exacta."
           },
           {
-            "type": "Dropdown",
-            "name": "colonia_propiedad",
-            "label": "Colonia",
-            "required": true,
-            "data-source": "${screen.WELCOME.data.colonias}"
+            "type": "Form",
+            "name": "location_form",
+            "children": [
+              {
+                "type": "Dropdown",
+                "name": "colonia_propiedad",
+                "label": "Colonia",
+                "required": true,
+                "data-source": "${screen.WELCOME.data.colonias}"
+              }
+            ]
           },
           {
             "type": "Footer",
@@ -369,7 +375,7 @@
           },
           {
             "type": "TextBody",
-            "text": "Valor estimado: $${screen.VALUE.form.valor_aproximado_de_tu_propiedad}"
+            "text": "Valor estimado: ${screen.VALUE.form.valor_aproximado_de_tu_propiedad}"
           },
           {
             "type": "TextBody",
