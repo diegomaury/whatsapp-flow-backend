@@ -32,9 +32,9 @@ const { acquireWebhookLock } = require('../services/idempotency');
  * @param {object} payload - Datos del mensaje normalizado
  */
 async function forwardToMake(payload) {
-  const makeUrl = process.env.MAKE_WA_INBOUND_URL;
+  const makeUrl = process.env.MAKE_WEBHOOK_URL || process.env.MAKE_WA_INBOUND_URL;
   if (!makeUrl) {
-    console.warn('[Webhook] MAKE_WA_INBOUND_URL no configurada — mensaje no reenviado');
+    console.warn('[Webhook] MAKE_WEBHOOK_URL no configurada — mensaje no reenviado');
     return;
   }
 
