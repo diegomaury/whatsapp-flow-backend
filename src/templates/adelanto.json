@@ -207,7 +207,7 @@
                 "data-source": [
                   { "id": "Sí", "title": "Sí" },
                   { "id": "No", "title": "No" },
-                  { "id": "No lo sé aún", "title": "Aún no lo sé" }
+                  { "id": "Aún no lo sé", "title": "Aún no lo sé" }
                 ]
               }
             ]
@@ -393,11 +393,11 @@
           },
           {
             "type": "TextBody",
-            "text": "💰 Valor estimado: $${screen.VALUE.form.valor_aproximado_de_tu_propiedad}"
+            "text": "💰 Valor estimado: ${screen.VALUE.form.valor_aproximado_de_tu_propiedad}"
           },
           {
             "type": "TextBody",
-            "text": "✅ Adelanto estimado: $${screen.ESTIMATE.data.adelanto_min} – $${screen.ESTIMATE.data.adelanto_max}"
+            "text": "✅ Adelanto estimado: ${screen.ESTIMATE.data.adelanto_min} – ${screen.ESTIMATE.data.adelanto_max}"
           },
           {
             "type": "Footer",

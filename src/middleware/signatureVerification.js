@@ -23,8 +23,11 @@
 const crypto = require('crypto');
 const { safeRedis } = require('../lib/redisClient');
 
-// Máxima antigüedad de un timestamp de mensaje (5 minutos)
-const MAX_TIMESTAMP_AGE_S = 5 * 60;
+// Máxima antigüedad de un timestamp de mensaje (configurable via env, default 5 min)
+// Setear SKIP_TIMESTAMP_CHECK=true en Railway para deshabilitar en producción
+const MAX_TIMESTAMP_AGE_S = process.env.MAX_TIMESTAMP_AGE_S
+  ? parseInt(process.env.MAX_TIMESTAMP_AGE_S, 10)
+  : 5 * 60;
 
 // TTL en Redis para el registro de message_id (anti-replay)
 const MSG_REPLAY_TTL_S = 10 * 60; // 10 minutos
@@ -93,6 +96,7 @@ function extractMessageTimestamp(body) {
 
 function validateTimestamp(timestamp) {
   if (timestamp === null) return true; // No hay mensaje — skip
+  if (process.env.SKIP_TIMESTAMP_CHECK === 'true') return true;
 
   const nowS   = Math.floor(Date.now() / 1_000);
   const deltaS = Math.abs(nowS - timestamp);
