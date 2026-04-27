@@ -66,7 +66,8 @@ function validateHmac(req, res) {
       Buffer.from(signatureHeader),
       Buffer.from(expected)
     );
-  } catch {
+  } catch (err) {
+    console.error('[Security] Error en timingSafeEqual:', err);
     match = false; // Buffers de distinto tamaño
   }
 s
@@ -158,16 +159,16 @@ async function verifyWebhookSignature(req, res, next) {
   }
 
   // ── 3. Anti-replay por message_id ──────────────────────────────────────────
-  const messageId = req.body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.id;
+  // const messageId = req.body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.id;
 
-  if (messageId) {
-    const isFirstTime = await checkAndStoreMessageId(messageId);
+  // if (messageId) {
+  //   const isFirstTime = await checkAndStoreMessageId(messageId);
 
-    if (!isFirstTime) {
-      console.warn(`[Security] Replay detectado y descartado: message_id=${messageId}`);
-      return res.sendStatus(200); // Silencioso para que Meta no reintente
-    }
-  }
+  //   if (!isFirstTime) {
+  //     console.warn(`[Security] Replay detectado y descartado: message_id=${messageId}`);
+  //     return res.sendStatus(200); // Silencioso para que Meta no reintente
+  //   }
+  // }
 
   next();
 }
