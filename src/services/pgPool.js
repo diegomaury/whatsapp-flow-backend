@@ -18,7 +18,7 @@ function getPool() {
       ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
       max:             parseInt(process.env.PG_POOL_MAX, 10) || 10,
       idleTimeoutMillis:  30_000,
-      connectionTimeoutMillis: 3_000,
+      connectionTimeoutMillis: 10_000,
     });
 
     _pool.on('error', (err) => {
