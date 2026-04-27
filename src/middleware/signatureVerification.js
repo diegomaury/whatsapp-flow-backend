@@ -70,7 +70,7 @@ function validateHmac(req, res) {
     console.error('[Security] Error en timingSafeEqual:', err);
     match = false; // Buffers de distinto tamaño
   }
-s
+
   if (!match) {
     console.error('[Security] Firma HMAC inválida');
     res.status(403).json({ error: 'Firma inválida' });
@@ -146,8 +146,13 @@ async function checkAndStoreMessageId(messageId) {
  * Combina HMAC + timestamp + anti-replay.
  */
 async function verifyWebhookSignature(req, res, next) {
-  // ── 1. HMAC ────────────────────────────────────────────────────────────────
-  if (!validateHmac(req, res)) return; // ya envió respuesta
+  console.log('[Security] middleware start');
+
+  if (!validateHmac(req, res)) {
+    console.log('[Security] HMAC failed');
+    return; // ya envió respuesta
+  }
+  console.log('[Security] HMAC ok');
 
   // ── 2. Timestamp ───────────────────────────────────────────────────────────
   const timestamp = extractMessageTimestamp(req.body);
@@ -170,6 +175,7 @@ async function verifyWebhookSignature(req, res, next) {
   //   }
   // }
 
+  console.log('[Security] middleware end, calling next()');
   next();
 }
 
