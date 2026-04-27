@@ -11,7 +11,7 @@ const { webhookRateLimit }                = require('../middleware/rateLimiter')
 router.get('/', verifyWebhook);
 
 // POST /webhook — mensajes entrantes
-// Pipeline: HMAC + anti-replay → rate limit por número → lógica
-router.post('/', verifyWebhookSignature, webhookRateLimit(), receiveMessage);
+// Pipeline: HMAC + anti-replay → lógica (rate limit temporalmente deshabilitado)
+router.post('/', verifyWebhookSignature, receiveMessage);
 
 module.exports = router;
