@@ -145,33 +145,38 @@ async function handleMessage(message, value) {
     );
   }
 
+  // Reenviar a Make cualquier tipo de mensaje
+  await forwardToMake({
+    from,
+    type,
+    message_id: messageId,
+    message,
+    value,
+    timestamp: message.timestamp,
+  });
+
+  // Además, responde al usuario según el tipo
   switch (type) {
     case 'text':
       await handleTextMessage(from, message);
       break;
-
     case 'interactive':
       await handleInteractive(from, message);
       break;
-
     case 'image':
       await sendTextMessage(from, '📷 Imagen recibida. ¡Gracias!');
       break;
-
     case 'audio':
       await sendTextMessage(from, '🎵 Audio recibido. ¡Gracias!');
       break;
-
     case 'document':
       await sendTextMessage(from, '📄 Documento recibido. ¡Gracias!');
       break;
-
     case 'location': {
       const { latitude, longitude } = message.location || {};
       await sendTextMessage(from, `📍 Ubicación recibida: ${latitude}, ${longitude}`);
       break;
     }
-
     default:
       console.log(`[Webhook] Tipo no manejado: ${type}`);
       await sendTextMessage(from, '✅ Mensaje recibido. ¡Gracias!');
