@@ -69,7 +69,7 @@ function validateHmac(req, res) {
   } catch {
     match = false; // Buffers de distinto tamaño
   }
-
+s
   if (!match) {
     console.error('[Security] Firma HMAC inválida');
     res.status(403).json({ error: 'Firma inválida' });
@@ -100,6 +100,7 @@ function validateTimestamp(timestamp) {
 
   const nowS   = Math.floor(Date.now() / 1_000);
   const deltaS = Math.abs(nowS - timestamp);
+  console.log('[Security] timestamp:', timestamp, 'now:', nowS, 'delta:', deltaS, 'max:', MAX_TIMESTAMP_AGE_S);
 
   if (deltaS > MAX_TIMESTAMP_AGE_S) {
     console.warn(
