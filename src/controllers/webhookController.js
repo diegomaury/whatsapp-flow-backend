@@ -20,7 +20,7 @@
  */
 
 const axios = require('axios');
-const { markMessageAsRead } = require('../services/whatsappApi');
+const { sendTextMessage, markMessageAsRead } = require('../services/whatsappApi');
 const { acquireWebhookLock } = require('../services/idempotency');
 
 // ─── Forward a Make ───────────────────────────────────────────────────────────
@@ -134,9 +134,11 @@ async function handleMessage(message, value) {
   console.log(`[Webhook] Procesando mensaje de ${from} — tipo: ${type} id: ${messageId}`);
 
   // Marcar como leído (best-effort, no bloquear si falla)
-  markMessageAsRead(messageId).catch((err) =>
-    console.warn('[Webhook] No se pudo marcar como leído:', err.message)
-  );
+  if (messageId) {
+    markMessageAsRead(messageId).catch((err) =>
+      console.warn('[Webhook] No se pudo marcar como leído:', err.message)
+    );
+  }
 
   switch (type) {
     case 'text':
