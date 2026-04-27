@@ -245,7 +245,8 @@ async function persistStateTransition(decryptedBody, responseData) {
 
     // 2. DISPARAR MAKE.COM (Asíncrono)
     // No usamos "await" aquí para no bloquear la respuesta a Meta
-    const makeWebhookUrl = process.env.MAKE_WEBHOOK_URL;
+    const makeWebhookUrl = process.env.MAKE_WA_INBOUND_URL || process.env.MAKE_WEBHOOK_URL;
+    console.log(`[Flow] Usando Make URL: ${makeWebhookUrl}`);
     if (makeWebhookUrl) {
       axios.post(makeWebhookUrl, {
         flow_token,

@@ -32,17 +32,19 @@ const { acquireWebhookLock } = require('../services/idempotency');
  * @param {object} payload - Datos del mensaje normalizado
  */
 async function forwardToMake(payload) {
-  const makeUrl = process.env.MAKE_WEBHOOK_URL || process.env.MAKE_WA_INBOUND_URL;
+  const makeUrl = process.env.MAKE_WA_INBOUND_URL || process.env.MAKE_WEBHOOK_URL;
   if (!makeUrl) {
-    console.warn('[Webhook] MAKE_WEBHOOK_URL no configurada — mensaje no reenviado');
+    console.warn('[Webhook] MAKE_WA_INBOUND_URL/MAKE_WEBHOOK_URL no configurada — mensaje no reenviado');
     return;
   }
 
   try {
-    await axios.post(makeUrl, payload, { timeout: 5000 });
-    console.log(`[Webhook] → Make OK (from: ${payload.from}, type: ${payload.type})`);
+    const response = await axios.post(makeUrl, payload, { timeout: 5000 });
+    console.log(`[Webhook] → Make status: ${response.status} body: ${JSON.stringify(response.data)} (from: ${payload.from}, type: ${payload.type})`);
   } catch (err) {
-    console.error('[Webhook] Error forwarding a Make:', err.response?.data || err.message);
+    const status = err.response?.status;
+    const data = err.response?.data;
+    console.error(`[Webhook] Error forwarding a Make: status=${status} body=${JSON.stringify(data)} msg=${err.message}`);
   }
 }
 

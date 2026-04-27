@@ -146,7 +146,8 @@ function handleSummaryExchange(data, decryptedBody) {
   const nextScreen = acepto === 'si' ? 'COMPLETE_YES' : 'COMPLETE_NO';
 
   // Disparar Make.com asíncrono — no bloquea la respuesta a Meta
-  const makeWebhookUrl = process.env.MAKE_WEBHOOK_URL;
+  const makeWebhookUrl = process.env.MAKE_WA_INBOUND_URL || process.env.MAKE_WEBHOOK_URL;
+  console.log(`[StateMachine] Usando Make URL: ${makeWebhookUrl}`);
   if (makeWebhookUrl) {
     const axios = require('axios');
     axios.post(makeWebhookUrl, {
