@@ -39,7 +39,10 @@ async function forwardToMake(payload) {
   }
 
   try {
-    const response = await axios.post(makeUrl, payload, { timeout: 5000 });
+    // Log del JSON exacto que se envía a Make
+    const outgoing = [payload];
+    console.log('[Webhook] Payload enviado a Make:', JSON.stringify(outgoing));
+    const response = await axios.post(makeUrl, outgoing, { timeout: 5000 });
     console.log(`[Webhook] → Make status: ${response.status} body: ${JSON.stringify(response.data)} (from: ${payload.from}, type: ${payload.type})`);
   } catch (err) {
     const status = err.response?.status;
