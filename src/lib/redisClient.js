@@ -14,8 +14,13 @@ redis.on('error', (err) => {
   console.error('[Redis] Error:', err.message);
 });
 
+function getRedisClient() {
+  return redis;
+}
+
 module.exports = {
   redis,
+  getRedisClient,
   safeRedis: async (fn, fallback) => {
     try {
       return await fn(redis);
