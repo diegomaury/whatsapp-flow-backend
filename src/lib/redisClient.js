@@ -20,10 +20,6 @@ redis.on('error', (err) => {
   console.error('[Redis] Error:', err.message);
 });
 
-/**
- * Returns the shared Redis client instance.
- * Used by consumers that need direct access (e.g. graceful shutdown, WATCH/MULTI).
- */
 function getRedisClient() {
   return redis;
 }
