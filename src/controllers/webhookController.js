@@ -73,6 +73,8 @@ function verifyWebhook(req, res) {
 
 async function receiveMessage(req, res) {
   const body = req.body;
+  // Log para depuración: imprime el body recibido
+  console.log('[Webhook] Body recibido:', JSON.stringify(body, null, 2));
 
   if (body?.object !== 'whatsapp_business_account') {
     return res.sendStatus(404);
