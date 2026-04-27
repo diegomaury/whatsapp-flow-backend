@@ -1,7 +1,13 @@
 
 const Redis = require('ioredis');
 
-const redis = new Redis(process.env.REDIS_URL, {
+const redisUrl = process.env.REDIS_URL;
+
+if (!redisUrl) {
+  console.warn('[Redis] ADVERTENCIA: REDIS_URL no está definida. El cliente Redis no podrá conectarse.');
+}
+
+const redis = new Redis(redisUrl, {
   maxRetriesPerRequest: 1,
   enableReadyCheck: true,
 });
