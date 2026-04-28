@@ -186,15 +186,7 @@ async function handleMessage(message, value) {
 async function handleTextMessage(from, message) {
   const text = (message.text?.body || '').trim();
   console.log(`[Webhook] Texto de ${from}: "${text.slice(0, 80)}"`);
-
-  // Reenviar a Make — Make decide la respuesta
-  await forwardToMake({
-    from,
-    type:       'text',
-    message_id: message.id,
-    text,
-    timestamp:  message.timestamp,
-  });
+  // Make ya recibió el payload completo en handleMessage — no reenviar de nuevo
 }
 
 async function handleInteractive(from, message) {
