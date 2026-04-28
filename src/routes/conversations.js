@@ -99,4 +99,15 @@ router.post('/send-message', async (req, res, next) => {
   }
 });
 
+// DELETE /api/conversations/:id — elimina todos los mensajes de una conversación
+router.delete('/conversations/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await getPool().query('DELETE FROM messages WHERE conversation_id = $1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

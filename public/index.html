@@ -75,6 +75,23 @@
     .conv-item:hover { background: #f5f5f5; }
     .conv-item.active { background: #e8f5e9; }
 
+    .conv-delete {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #ccc;
+      font-size: 16px;
+      cursor: pointer;
+      display: none;
+      line-height: 1;
+    }
+    .conv-item { position: relative; }
+    .conv-item:hover .conv-delete { display: block; }
+    .conv-delete:hover { color: #e53935; }
+
     .conv-name {
       font-weight: 600;
       font-size: 15px;
@@ -274,13 +291,22 @@
           <div class="conv-phone">${escHtml(c.phone)}</div>
           <div class="conv-preview">${c.last_direction === 'out' ? '✓ ' : ''}${escHtml(c.last_message)}</div>
           <div class="conv-time">${fmtDate(c.created_at)}</div>
+          <button class="conv-delete" data-id="${c.conversation_id}" title="Eliminar conversación">×</button>
         </div>
       `).join('');
 
       el.querySelectorAll('.conv-item').forEach(item => {
-        item.addEventListener('click', () => {
+        item.addEventListener('click', (e) => {
+          if (e.target.classList.contains('conv-delete')) return;
           const { id, name, phone } = item.dataset;
           openConversation(id, name, phone);
+        });
+      });
+
+      el.querySelectorAll('.conv-delete').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteConversation(btn.dataset.id);
         });
       });
     }
@@ -328,6 +354,21 @@
       if (wasAtBottom || msgs.length < 3) {
         container.scrollTop = container.scrollHeight;
       }
+    }
+
+    // ── delete conversation ───────────────────────────────────────────────────
+    async function deleteConversation(id) {
+      await fetch(`${BASE}/api/conversations/${id}`, { method: 'DELETE' });
+      if (activeConvId === id) {
+        activeConvId = null;
+        activeName   = '';
+        activePhone  = '';
+        clearInterval(pollTimer);
+        document.getElementById('chat-header').textContent = 'Selecciona una conversación';
+        document.getElementById('messages-container').innerHTML = '<div id="empty-state">← Elige una conversación</div>';
+        document.getElementById('send-bar').classList.add('send-bar-hidden');
+      }
+      await loadConversations();
     }
 
     // ── send ──────────────────────────────────────────────────────────────────
