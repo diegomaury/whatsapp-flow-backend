@@ -147,13 +147,12 @@ async function handleMessage(message, value) {
 
   // Reenviar a Make cualquier tipo de mensaje
   await forwardToMake({
-    from,
-    type,
-    message_id: messageId,
-    message,
-    value,
-    timestamp: message.timestamp,
-  });
+  from,
+  type,
+  message_id: messageId,
+  timestamp: message.timestamp,
+  message
+});
 
   // Además, responde al usuario según el tipo
   switch (type) {
