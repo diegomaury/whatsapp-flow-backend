@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WhatsApp Inbox</title>
-  <link rel="stylesheet" href="styles.css">
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -31,7 +31,6 @@
       overflow: hidden;
     }
 
-    /* ── Sidebar ── */
     #sidebar {
       width: 340px;
       background: #fff;
@@ -67,9 +66,11 @@
 
     .conv-item {
       padding: 14px 16px;
+      padding-right: 36px;
       border-bottom: 1px solid #f0f0f0;
       cursor: pointer;
       transition: background 0.15s;
+      position: relative;
     }
 
     .conv-item:hover { background: #f5f5f5; }
@@ -78,8 +79,7 @@
     .conv-delete {
       position: absolute;
       right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
+      top: 12px;
       background: none;
       border: none;
       color: #ccc;
@@ -88,7 +88,7 @@
       display: none;
       line-height: 1;
     }
-    .conv-item { position: relative; }
+
     .conv-item:hover .conv-delete { display: block; }
     .conv-delete:hover { color: #e53935; }
 
@@ -118,9 +118,9 @@
       color: #aaa;
       text-align: right;
       margin-top: 2px;
+      padding-right: 8px;
     }
 
-    /* ── Chat panel ── */
     #chat-panel {
       flex: 1;
       display: flex;
@@ -184,7 +184,6 @@
       font-size: 16px;
     }
 
-    /* ── Send bar ── */
     #send-bar {
       display: flex;
       gap: 8px;
@@ -192,6 +191,10 @@
       background: #f0f0f0;
       border-top: 1px solid #ddd;
       flex-shrink: 0;
+    }
+
+    .send-bar-hidden {
+      display: none !important;
     }
 
     #msg-input {
@@ -202,6 +205,9 @@
       font-size: 14px;
       outline: none;
       resize: none;
+      min-height: 42px;
+      max-height: 120px;
+      overflow-y: auto;
     }
 
     #send-btn {
@@ -215,9 +221,16 @@
       font-weight: 600;
     }
 
-    #send-btn:disabled { background: #aaa; cursor: not-allowed; }
+    #send-btn:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
 
-    .spinner { text-align: center; padding: 20px; color: #888; }
+    .spinner {
+      text-align: center;
+      padding: 20px;
+      color: #888;
+    }
   </style>
 </head>
 <body>
@@ -245,58 +258,77 @@
   </div>
 
   <script>
-    const BASE = '';
-    let activeConvId = null;
-    let activeName   = '';
-    let activePhone  = '';
-    let pollTimer    = null;
+    const BASE = window.location.origin;
 
-    // ── helpers ──────────────────────────────────────────────────────────────
+    let activeConvId = null;
+    let activeName = '';
+    let activePhone = '';
+    let pollTimer = null;
+
+    let loadingConversations = false;
+    let loadingMessages = false;
+    let lastRenderedMessages = '';
+
     function fmtTime(ts) {
       const d = new Date(ts);
       return d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
     }
+
     function fmtDate(ts) {
       const d = new Date(ts);
       const today = new Date();
-      if (d.toDateString() === today.toDateString()) return fmtTime(ts);
+
+      if (d.toLocaleDateString('en-CA') === today.toLocaleDateString('en-CA')) {
+        return fmtTime(ts);
+      }
+
       return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
     }
 
-    // ── conversations ─────────────────────────────────────────────────────────
     async function loadConversations() {
+      if (loadingConversations) return;
+      loadingConversations = true;
+
       try {
         const r = await fetch(`${BASE}/api/conversations`);
         const { data } = await r.json();
         renderConvList(data || []);
       } catch (e) {
-        document.getElementById('conv-list').innerHTML = '<div class="spinner">Error cargando conversaciones</div>';
+        document.getElementById('conv-list').innerHTML =
+          '<div class="spinner">Error cargando conversaciones</div>';
+      } finally {
+        loadingConversations = false;
       }
     }
 
     function renderConvList(convs) {
       const el = document.getElementById('conv-list');
+
       if (!convs.length) {
         el.innerHTML = '<div class="spinner">Sin conversaciones aún</div>';
         return;
       }
-      // Sort by latest first
-      convs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      convs.sort((a, b) =>
+        new Date(b.last_message_at || b.created_at) -
+        new Date(a.last_message_at || a.created_at)
+      );
+
       el.innerHTML = convs.map(c => `
         <div class="conv-item${c.conversation_id === activeConvId ? ' active' : ''}"
-             data-id="${c.conversation_id}"
-             data-name="${escHtml(c.lead_name)}"
-             data-phone="${escHtml(c.phone)}">
+          data-id="${escHtml(c.conversation_id)}"
+          data-name="${escHtml(c.lead_name)}"
+          data-phone="${escHtml(c.phone)}">
           <div class="conv-name">${escHtml(c.lead_name)}</div>
           <div class="conv-phone">${escHtml(c.phone)}</div>
           <div class="conv-preview">${c.last_direction === 'out' ? '✓ ' : ''}${escHtml(c.last_message)}</div>
-          <div class="conv-time">${fmtDate(c.created_at)}</div>
-          <button class="conv-delete" data-id="${c.conversation_id}" title="Eliminar conversación">×</button>
+          <div class="conv-time">${fmtDate(c.last_message_at || c.created_at)}</div>
+          <button class="conv-delete" data-id="${escHtml(c.conversation_id)}" title="Eliminar conversación">×</button>
         </div>
       `).join('');
 
       el.querySelectorAll('.conv-item').forEach(item => {
-        item.addEventListener('click', (e) => {
+        item.addEventListener('click', e => {
           if (e.target.classList.contains('conv-delete')) return;
           const { id, name, phone } = item.dataset;
           openConversation(id, name, phone);
@@ -304,45 +336,56 @@
       });
 
       el.querySelectorAll('.conv-delete').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', e => {
           e.stopPropagation();
           deleteConversation(btn.dataset.id);
         });
       });
     }
 
-    // ── messages ──────────────────────────────────────────────────────────────
     async function openConversation(id, name, phone) {
       activeConvId = id;
-      activeName   = name;
-      activePhone  = phone;
+      activeName = name;
+      activePhone = phone;
 
-      document.getElementById('chat-header').textContent = `${name}  ·  ${phone}`;
+      document.getElementById('chat-header').textContent = `${name} · ${phone}`;
       document.getElementById('send-bar').classList.remove('send-bar-hidden');
       document.getElementById('empty-state')?.remove();
 
-      // highlight active
       document.querySelectorAll('.conv-item').forEach(el => {
         el.classList.toggle('active', el.dataset.id === id);
       });
 
+      lastRenderedMessages = '';
       await loadMessages();
+
       clearInterval(pollTimer);
       pollTimer = setInterval(loadMessages, 5000);
     }
 
     async function loadMessages() {
-      if (!activeConvId) return;
+      if (!activeConvId || loadingMessages) return;
+      loadingMessages = true;
+
       try {
         const r = await fetch(`${BASE}/api/conversations/${activeConvId}/messages`);
         const { data } = await r.json();
-        renderMessages(data || []);
-      } catch (e) { /* silent on poll */ }
+
+        const serialized = JSON.stringify(data || []);
+        if (serialized !== lastRenderedMessages) {
+          renderMessages(data || []);
+          lastRenderedMessages = serialized;
+        }
+      } finally {
+        loadingMessages = false;
+      }
     }
 
     function renderMessages(msgs) {
       const container = document.getElementById('messages-container');
-      const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 40;
+
+      const wasAtBottom =
+        container.scrollHeight - container.scrollTop <= container.clientHeight + 40;
 
       container.innerHTML = msgs.map(m => `
         <div class="msg-bubble ${m.direction}">
@@ -356,46 +399,68 @@
       }
     }
 
-    // ── delete conversation ───────────────────────────────────────────────────
     async function deleteConversation(id) {
-      await fetch(`${BASE}/api/conversations/${id}`, { method: 'DELETE' });
-      if (activeConvId === id) {
-        activeConvId = null;
-        activeName   = '';
-        activePhone  = '';
-        clearInterval(pollTimer);
-        document.getElementById('chat-header').textContent = 'Selecciona una conversación';
-        document.getElementById('messages-container').innerHTML = '<div id="empty-state">← Elige una conversación</div>';
-        document.getElementById('send-bar').classList.add('send-bar-hidden');
+      try {
+        const r = await fetch(`${BASE}/api/conversations/${id}`, { method: 'DELETE' });
+        if (!r.ok) throw new Error('Error eliminando conversación');
+
+        if (activeConvId === id) {
+          activeConvId = null;
+          activeName = '';
+          activePhone = '';
+          clearInterval(pollTimer);
+
+          document.getElementById('chat-header').textContent = 'Selecciona una conversación';
+          document.getElementById('messages-container').innerHTML =
+            '<div id="empty-state">← Elige una conversación</div>';
+          document.getElementById('send-bar').classList.add('send-bar-hidden');
+        }
+
+        await loadConversations();
+      } catch (e) {
+        console.error(e);
       }
-      await loadConversations();
     }
 
-    // ── send ──────────────────────────────────────────────────────────────────
     async function sendMessage() {
       const input = document.getElementById('msg-input');
-      const text  = input.value.trim();
+      const text = input.value.trim();
+
       if (!text || !activePhone) return;
 
       const btn = document.getElementById('send-btn');
       btn.disabled = true;
-      input.value  = '';
+      input.value = '';
+      autoGrow(input);
 
       try {
         const r = await fetch(`${BASE}/api/send-message`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: activePhone, message: text, lead_name: activeName }),
+          body: JSON.stringify({
+            phone: activePhone,
+            message: text,
+            lead_name: activeName
+          }),
         });
+
         if (!r.ok) {
           const { error } = await r.json().catch(() => ({}));
           console.error('[Inbox] Error enviando:', error);
         }
+
+        lastRenderedMessages = '';
         await loadMessages();
+        await loadConversations();
       } finally {
         btn.disabled = false;
         input.focus();
       }
+    }
+
+    function autoGrow(el) {
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
     }
 
     function escHtml(str) {
@@ -406,14 +471,24 @@
         .replace(/"/g, '&quot;');
     }
 
-    // ── event wiring ──────────────────────────────────────────────────────────
     document.getElementById('refresh-btn').addEventListener('click', loadConversations);
     document.getElementById('send-btn').addEventListener('click', sendMessage);
+
     document.getElementById('msg-input').addEventListener('keydown', e => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
     });
 
-    // initial load + auto-refresh sidebar every 10s
+    document.getElementById('msg-input').addEventListener('input', e => {
+      autoGrow(e.target);
+    });
+
+    window.addEventListener('beforeunload', () => {
+      clearInterval(pollTimer);
+    });
+
     loadConversations();
     setInterval(loadConversations, 10000);
   </script>
