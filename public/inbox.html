@@ -169,6 +169,7 @@
 
     /* ── Send bar ── */
     #send-bar {
+      display: flex;
       gap: 8px;
       padding: 10px 16px;
       background: #f0f0f0;
@@ -340,27 +341,15 @@
       input.value  = '';
 
       try {
-        // Log outgoing message to DB
-        await fetch(`${BASE}/api/log-message`, {
+        const r = await fetch(`${BASE}/api/send-message`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            phone:     activePhone,
-            lead_name: activeName,
-            direction: 'out',
-            content:   text,
-          }),
+          body: JSON.stringify({ phone: activePhone, message: text, lead_name: activeName }),
         });
-
-        // Send via WhatsApp API route (if available)
-        try {
-          await fetch(`${BASE}/send-message`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ to: activePhone, message: text }),
-          });
-        } catch (_) { /* endpoint may not be wired for text yet */ }
-
+        if (!r.ok) {
+          const { error } = await r.json().catch(() => ({}));
+          console.error('[Inbox] Error enviando:', error);
+        }
         await loadMessages();
       } finally {
         btn.disabled = false;
@@ -383,8 +372,9 @@
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     });
 
-    // initial load
+    // initial load + auto-refresh sidebar every 10s
     loadConversations();
+    setInterval(loadConversations, 10000);
   </script>
 </body>
 </html>

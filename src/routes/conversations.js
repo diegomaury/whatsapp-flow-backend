@@ -74,4 +74,29 @@ router.get('/conversations/:id/messages', async (req, res, next) => {
   }
 });
 
+// POST /api/send-message — envía mensaje de texto desde el inbox UI
+router.post('/send-message', async (req, res, next) => {
+  try {
+    const { phone, message, lead_name } = req.body;
+
+    if (!phone || !message) {
+      return res.status(400).json({ success: false, error: 'phone y message son requeridos' });
+    }
+
+    const { sendTextMessage } = require('../services/whatsappApi');
+    await sendTextMessage(phone, message);
+
+    const conversation_id = String(phone).replace(/\D/g, '').slice(-12);
+    await getPool().query(
+      `INSERT INTO messages (conversation_id, phone, lead_name, direction, content, message_type)
+       VALUES ($1, $2, $3, 'out', $4, 'text')`,
+      [conversation_id, phone, lead_name || phone, message]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
