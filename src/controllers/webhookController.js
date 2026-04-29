@@ -178,7 +178,7 @@ async function handleMessage(message, value) {
     }
     default:
       console.log(`[Webhook] Tipo no manejado: ${type}`);
-      await sendTextMessage(from, '✅ Mensaje recibido. ¡Gracias!');
+      // Ya no se envía mensaje automático de recibido
   }
 }
 
