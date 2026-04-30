@@ -125,15 +125,15 @@ async function sendFlow({
           flow_token: flowToken,
           flow_id: flowId,
           flow_cta: ctaText,
-          flow_action: 'data_exchange',
-          flow_action_payload: {
-            data: screenData,
-          },
+          flow_action: 'navigate',
+          flow_action_payload: screenData,
         },
       },
     },
   };
 
+    // Log temporal para depuración
+    console.log('[DEBUG] Payload enviado a WhatsApp:', JSON.stringify(body, null, 2));
   try {
     const { data } = await axios.post(messagesUrl(), body, { headers: authHeaders() });
     console.log(`[API] Flow enviado a ${to} (flowId=${flowId}):`, data);
