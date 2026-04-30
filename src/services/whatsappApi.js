@@ -132,8 +132,10 @@ async function sendFlow({
     },
   };
 
-    // Log temporal para depuración
-    console.log('[DEBUG] Payload enviado a WhatsApp:', JSON.stringify(body, null, 2));
+    // Log temporal para depuración (consola y error)
+    const payloadStr = JSON.stringify(body, null, 2);
+    console.log('[DEBUG] Payload enviado a WhatsApp:', payloadStr);
+    console.error('[DEBUG] Payload enviado a WhatsApp:', payloadStr);
   try {
     const { data } = await axios.post(messagesUrl(), body, { headers: authHeaders() });
     console.log(`[API] Flow enviado a ${to} (flowId=${flowId}):`, data);
