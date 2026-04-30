@@ -125,9 +125,8 @@ async function sendFlow({
           flow_token: flowToken,
           flow_id: flowId,
           flow_cta: ctaText,
-          flow_action: 'navigate',
+          flow_action: 'data_exchange',
           flow_action_payload: {
-            screen: 'WELCOME',
             data: screenData,
           },
         },

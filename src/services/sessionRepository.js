@@ -30,7 +30,7 @@ const { getPool } = require('./pgPool');
 
 const SESSION_TTL_S = 60 * 60; // 1h
 
-const VALID_SCREENS = ['WELCOME', 'FORM', 'CONFIRM', 'SUCCESS'];
+const VALID_SCREENS = ['WELCOME', 'LOCATION', 'PROPERTY', 'VALUE', 'ESTIMATE', 'AUTHORIZATION', 'SUMMARY', 'COMPLETE_YES', 'COMPLETE_NO', 'SUCCESS'];
 const VALID_STATUSES = ['ACTIVE', 'COMPLETED', 'ABANDONED', 'FAILED'];
 
 // ─── Clase de error ───────────────────────────────────────────────────────────

@@ -1,0 +1,209 @@
+{
+  "name": "S1 - SOFI Conversacional",
+  "flow": [
+    {
+      "id": 1,
+      "module": "webhooks:CustomWebhook",
+      "version": 1,
+      "parameters": {
+        "hookType": "instant"
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {"x": 0, "y": 0},
+        "restore": {},
+        "parameters": [
+          {"name": "hookType", "type": "select", "label": "Webhook type", "required": true, "validate": {"enum": ["instant"]}}
+        ],
+        "interface": [
+          {"name": "from", "type": "text", "label": "From"},
+          {"name": "type", "type": "text", "label": "Type"},
+          {"name": "text", "type": "text", "label": "Text"},
+          {"name": "message_id", "type": "text", "label": "Message ID"},
+          {"name": "timestamp", "type": "text", "label": "Timestamp"}
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "module": "tools:BasicRouter",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "condition": "{{if(1.type = 'text'; true; false)}}"
+      },
+      "metadata": {
+        "designer": {"x": 200, "y": 0},
+        "restore": {},
+        "expect": [
+          {"name": "condition", "type": "boolean", "label": "Condition", "required": true}
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "module": "datastore:GetRecord",
+      "version": 1,
+      "parameters": {"datastore": 12345},
+      "mapper": {
+        "key": "conv_{{1.from}}",
+        "returnWrapped": false
+      },
+      "metadata": {
+        "designer": {"x": 400, "y": 0},
+        "restore": {},
+        "parameters": [
+          {"name": "datastore", "type": "select", "label": "Datastore", "required": true}
+        ],
+        "expect": [
+          {"name": "key", "type": "text", "label": "Key", "required": true}
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "module": "datastore:GetRecord",
+      "version": 1,
+      "parameters": {"datastore": 67890},
+      "mapper": {
+        "key": "sofi_system_prompt",
+        "returnWrapped": false
+      },
+      "metadata": {
+        "designer": {"x": 600, "y": 0},
+        "restore": {},
+        "parameters": [
+          {"name": "datastore", "type": "select", "label": "Datastore", "required": true}
+        ],
+        "expect": [
+          {"name": "key", "type": "text", "label": "Key", "required": true}
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "module": "http:MakeRequest",
+      "version": 1,
+      "parameters": {
+        "url": "https://api.claude.ai/conversation",
+        "method": "POST"
+      },
+      "mapper": {
+        "body": "{\"history\": {{3.body}}, \"prompt\": {{4.body}}, \"message\": {{1.text}}}"
+      },
+      "metadata": {
+        "designer": {"x": 800, "y": 0},
+        "restore": {},
+        "parameters": [
+          {"name": "url", "type": "text", "label": "URL", "required": true},
+          {"name": "method", "type": "select", "label": "Method", "required": true, "validate": {"enum": ["POST"]}}
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "module": "tools:TextParser",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "text": "{{5.body}}"
+      },
+      "metadata": {
+        "designer": {"x": 1000, "y": 0},
+        "restore": {},
+        "expect": [
+          {"name": "text", "type": "text", "label": "Text", "required": true}
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "module": "tools:BasicRouter",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "condition": "{{if(6.TRIGGER_FLOW = 'adelanto'; true; false)}}"
+      },
+      "metadata": {
+        "designer": {"x": 1200, "y": 0},
+        "restore": {},
+        "expect": [
+          {"name": "condition", "type": "boolean", "label": "Condition", "required": true}
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "module": "http:MakeRequest",
+      "version": 1,
+      "parameters": {
+        "url": "https://your-backend/send-flow",
+        "method": "POST"
+      },
+      "mapper": {
+        "headers": {"X-Internal-Token": "{{INTERNAL_API_TOKEN}}"},
+        "body": {
+          "to": "{{1.from}}",
+          "flowId": "adelanto",
+          "flowToken": "{{uuid}}",
+          "headerText": "Calificación rápida",
+          "bodyText": "Completa los datos de tu propiedad",
+          "ctaText": "Empezar",
+          "screenData": {}
+        }
+      },
+      "metadata": {
+        "designer": {"x": 1400, "y": 0},
+        "restore": {},
+        "parameters": [
+          {"name": "url", "type": "text", "label": "URL", "required": true},
+          {"name": "method", "type": "select", "label": "Method", "required": true, "validate": {"enum": ["POST"]}}
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "module": "datastore:UpdateRecord",
+      "version": 1,
+      "parameters": {"datastore": 12345},
+      "mapper": {
+        "key": "conv_{{1.from}}",
+        "messages": "{{1.text}}",
+        "stage": "{{6.stage}}",
+        "product": "{{6.product}}",
+        "lead_name": "{{6.lead_name}}"
+      },
+      "metadata": {
+        "designer": {"x": 1600, "y": 0},
+        "restore": {},
+        "parameters": [
+          {"name": "datastore", "type": "select", "label": "Datastore", "required": true}
+        ],
+        "expect": [
+          {"name": "key", "type": "text", "label": "Key", "required": true}
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": false,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "slots": null,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": true,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "us1.make.com",
+    "notes": ["Conversational WhatsApp AI agent with flow trigger and message logging."]
+  }
+}

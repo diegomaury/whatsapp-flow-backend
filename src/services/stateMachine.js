@@ -145,19 +145,6 @@ function handleSummaryExchange(data, decryptedBody) {
   const acepto     = data?.acepto_continuar;
   const nextScreen = acepto === 'si' ? 'COMPLETE_YES' : 'COMPLETE_NO';
 
-  // Disparar Make.com asíncrono — no bloquea la respuesta a Meta
-  const makeWebhookUrl = process.env.MAKE_WA_INBOUND_URL || process.env.MAKE_WEBHOOK_URL;
-  console.log(`[StateMachine] Usando Make URL: ${makeWebhookUrl}`);
-  if (makeWebhookUrl) {
-    const axios = require('axios');
-    axios.post(makeWebhookUrl, {
-      flow_token: decryptedBody.flow_token,
-      timestamp:  new Date().toISOString(),
-      payload:    data,
-      phone:      decryptedBody.phone_number,
-    }).catch(err => console.error('[Make Error]', err.message));
-  }
-
   console.log(`[StateMachine] SUMMARY→${nextScreen}: acepto_continuar=${acepto}`);
 
   // Pasar todos los campos que necesitan COMPLETE_YES / COMPLETE_NO

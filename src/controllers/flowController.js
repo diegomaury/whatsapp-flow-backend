@@ -239,7 +239,7 @@ async function persistStateTransition(decryptedBody, responseData) {
     return;
   }
 
-  if (nextScreen === 'SUCCESS') {
+  if (nextScreen === 'COMPLETE_YES' || nextScreen === 'COMPLETE_NO') {
     // 1. Completar sesión en tu DB (Postgres/Redis)
     await sessionRepo.complete(flow_token, data || {});
 
